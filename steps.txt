@@ -3,4 +3,8 @@ Create two folders to split backend and front-end in the same git
 
 # git
 git init
-git branch -m master main  #means move/rename
+git branch -m master main  # I prefer to use main
+git add .
+git commit -m "chore: init project"
+git remote add origin git@github.com:brucePedroGomes/full-stack.git
+git push

@@ -1,0 +1,4 @@
+uv init --bare # to not use /src folder
+
+uv add django
+uv run django-admin startproject config . # Then config is for project settings
