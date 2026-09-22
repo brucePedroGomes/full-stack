@@ -1,0 +1,15 @@
+.venv
+.git
+.env
+.env.*
+**/__pycache__
+**/*.py[cod]
+db.sqlite3
+.pytest_cache
+.ruff_cache
+compose*.yaml
+compose*.yml
+docker-compose*.yaml
+docker-compose*.yml
+README.md
+scripts
