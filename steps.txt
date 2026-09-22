@@ -1,0 +1,6 @@
+# first steps
+Create two folders to split backend and front-end in the same git
+
+# git
+git init
+git branch -m master main  #means move/rename
