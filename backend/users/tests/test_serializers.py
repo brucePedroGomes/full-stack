@@ -13,5 +13,6 @@ class UserSerializerTests(SimpleTestCase):
 
         self.assertEqual(
             UserSerializer().to_representation(user),
-            {'id': None, 'username': 'ana', 'email': 'ana@example.com'},
+            {'id': None, 'username': 'ana', 'email': 'ana@example.com',
+             'first_name': '', 'last_name': ''},
         )
