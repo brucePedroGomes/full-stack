@@ -1,129 +1,84 @@
-import { useEffect, useRef, useState, type ReactElement } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Brand } from '@/components/brand'
-import { HomePage } from '@/components/home-page'
-import { LoginPage, type LoginValues } from '@/components/login-page'
+import { useCallback, useState, type ReactElement } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getAccount,
   getApiErrorMessage,
-  getTasks,
-  restoreSession,
-  SessionExpiredError,
+  sessionQuery,
   signIn,
   signOut,
-  type Account,
-  type Session,
-} from '@/lib/api'
+  type Credentials,
+} from './api/session'
+import { LoginForm } from './components/LoginForm'
+import { TaskPage } from './components/TaskPage'
 
-function App(): ReactElement {
-  const queryClient = useQueryClient()
-  const sessionRef = useRef<Session | null>(null)
-  const [account, setAccount] = useState<Account | null>(null)
+export default function App(): ReactElement {
+  const client = useQueryClient()
+  const session = useQuery(sessionQuery)
   const [notice, setNotice] = useState('')
-  const [checkingSession, setCheckingSession] = useState(true)
-  const [signOutError, setSignOutError] = useState('')
-  const [signingOut, setSigningOut] = useState(false)
-
-  useEffect(() => {
-    const controller = new AbortController()
-
-    async function checkSession(): Promise<void> {
-      try {
-        const session = await restoreSession(controller.signal)
-        if (session) {
-          const signedInAccount = await getAccount(session, controller.signal)
-          if (!controller.signal.aborted) {
-            sessionRef.current = session
-            setAccount(signedInAccount)
-          }
-        }
-      } catch (error) {
-        if (!controller.signal.aborted && !(error instanceof SessionExpiredError)) {
-          setNotice(getApiErrorMessage(error))
-        }
-      } finally {
-        if (!controller.signal.aborted) setCheckingSession(false)
-      }
-    }
-
-    void checkSession()
-    return () => controller.abort()
-  }, [])
-
-  const tasksQuery = useQuery({
-    queryKey: ['tasks', account?.id],
-    queryFn: ({ signal }) => {
-      const session = sessionRef.current
-      if (!session) throw new SessionExpiredError('Please sign in again.')
-      return getTasks(session, signal)
+  const endSession = useCallback(
+    (message: string) => {
+      client.setQueryData(sessionQuery.queryKey, null)
+      client.removeQueries({ queryKey: ['tasks'] })
+      client.removeQueries({ queryKey: ['users'] })
+      setNotice(message)
     },
-    enabled: account !== null,
-    retry: false,
-    staleTime: 30_000,
+    [client],
+  )
+  const login = useMutation({
+    networkMode: 'always',
+    mutationFn: async (values: Credentials) => {
+      const session = await signIn(values.username, values.password)
+      return { session, account: await getAccount(session) }
+    },
+    onSuccess: (data) => {
+      client.setQueryData(sessionQuery.queryKey, data)
+      setNotice('')
+    },
+  })
+  const logout = useMutation({
+    networkMode: 'always',
+    mutationFn: signOut,
+    onSuccess: () => endSession('You have signed out.'),
   })
 
-  useEffect(() => {
-    if (!(tasksQuery.error instanceof SessionExpiredError)) return
-    sessionRef.current = null
-    setAccount(null)
-    setNotice(tasksQuery.error.message)
-    queryClient.clear()
-  }, [tasksQuery.error, queryClient])
-
-  async function handleSignIn(values: LoginValues): Promise<void> {
-    const session = await signIn(values.username, values.password)
-    const signedInAccount = await getAccount(session)
-    sessionRef.current = session
-    setNotice('')
-    setAccount(signedInAccount)
-  }
-
-  async function handleSignOut(): Promise<void> {
-    setSigningOut(true)
-    setSignOutError('')
-    try {
-      await signOut()
-      sessionRef.current = null
-      setAccount(null)
-      setNotice('You have signed out.')
-      queryClient.clear()
-    } catch (error) {
-      setSignOutError(getApiErrorMessage(error))
-    } finally {
-      setSigningOut(false)
-    }
-  }
-
-  function handleRefresh(): void {
-    void tasksQuery.refetch()
-  }
-
-  if (checkingSession) {
+  if (session.isPending)
     return (
-      <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-[#f7f6f2] text-[#17333b]">
-        <Brand />
-        <p role="status" className="text-sm text-[#65736f]">Checking your session...</p>
-      </div>
+      <p role="status" className="p-6">
+        Loading...
+      </p>
+    )
+  if (!session.data) {
+    return (
+      <LoginForm
+        onSignIn={(values) => login.mutate(values)}
+        pending={login.isPending}
+        error={login.error || session.error}
+        notice={notice}
+      />
     )
   }
 
-  if (!account) {
-    return <LoginPage onSignIn={handleSignIn} notice={notice} />
-  }
-
   return (
-    <HomePage
-      account={account}
-      tasks={tasksQuery.data ?? null}
-      taskError={tasksQuery.error ? getApiErrorMessage(tasksQuery.error) : ''}
-      isLoading={tasksQuery.isPending}
-      isRefreshing={tasksQuery.isFetching}
-      isSigningOut={signingOut}
-      signOutError={signOutError}
-      onRefresh={handleRefresh}
-      onSignOut={handleSignOut}
-    />
+    <div className="min-h-screen bg-gray-50 text-gray-900">
+      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 bg-white px-6 py-4">
+        <span className="font-semibold">Task manager</span>
+        <div className="flex items-center gap-4">
+          <span>{session.data.account.username}</span>
+          <button
+            className="min-h-11 rounded border border-gray-300 px-4 hover:bg-gray-100 disabled:opacity-50"
+            disabled={logout.isPending}
+            onClick={() => logout.mutate()}
+          >
+            {logout.isPending ? 'Signing out...' : 'Sign out'}
+          </button>
+        </div>
+      </header>
+      {logout.error ? (
+        <p role="alert" className="p-4 text-red-700">
+          {getApiErrorMessage(logout.error)}
+        </p>
+      ) : null}
+      <TaskPage {...session.data} onSessionExpired={endSession} />
+    </div>
   )
 }
-
-export default App
