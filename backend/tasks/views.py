@@ -19,6 +19,7 @@ class TaskListCreateView(generics.ListCreateAPIView[Task]):
     def perform_create[ModelT: Model](
         self, serializer: BaseSerializer[ModelT]
     ) -> None:
+        """Set the creator from the request, not from client input."""
         serializer.save(created_by=self.request.user)
 
 

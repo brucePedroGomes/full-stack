@@ -2,6 +2,7 @@
 
 import os
 import re
+from collections.abc import Mapping
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -9,7 +10,7 @@ from django.core.exceptions import ImproperlyConfigured
 class Env:
     """Load one set of values; tests can supply a plain dictionary."""
 
-    def __init__(self, values=None):
+    def __init__(self, values: Mapping[str, str] | None = None) -> None:
         self._values = dict(os.environ if values is None else values)
 
         self.SECRET_KEY = self._required('DJANGO_SECRET_KEY')
@@ -84,14 +85,14 @@ class Env:
         if self.SECURE_HSTS_SECONDS < 0:
             raise ImproperlyConfigured('DJANGO_SECURE_HSTS_SECONDS cannot be negative.')
 
-    def _required(self, name):
+    def _required(self, name: str) -> str:
         """Reject missing or blank values without printing secrets."""
         value = self._values.get(name, '')
         if not value.strip():
             raise ImproperlyConfigured(f'{name} is required.')
         return value
 
-    def _bool(self, name, default=False):
+    def _bool(self, name: str, default: bool = False) -> bool:
         """Accept common boolean values; reject typos."""
         value = self._values.get(name, str(default)).strip().lower()
         if value in {'true', '1', 'yes', 'on'}:
@@ -100,14 +101,14 @@ class Env:
             return False
         raise ImproperlyConfigured(f'{name} must be a boolean (true or false).')
 
-    def _int(self, name, default):
+    def _int(self, name: str, default: int) -> int:
         """Name the setting when its value is not an integer."""
         try:
             return int(self._values.get(name, str(default)))
         except ValueError:
             raise ImproperlyConfigured(f'{name} must be an integer.') from None
 
-    def _list(self, name):
+    def _list(self, name: str) -> list[str]:
         """Split comma-separated values and remove empty entries."""
         return [
             value.strip() for value in self._values.get(name, '').split(',')

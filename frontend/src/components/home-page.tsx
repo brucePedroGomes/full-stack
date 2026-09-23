@@ -11,8 +11,10 @@ type HomePageProps = {
   taskError: string
   isLoading: boolean
   isRefreshing: boolean
+  isSigningOut: boolean
+  signOutError: string
   onRefresh: () => void
-  onSignOut: () => void
+  onSignOut: () => Promise<void>
 }
 
 const statusLabels: Record<string, string> = {
@@ -97,6 +99,8 @@ export function HomePage({
   taskError,
   isLoading,
   isRefreshing,
+  isSigningOut,
+  signOutError,
   onRefresh,
   onSignOut,
 }: HomePageProps): ReactElement {
@@ -110,17 +114,23 @@ export function HomePage({
             <Button
               type="button"
               variant="outline"
+              disabled={isSigningOut}
               onClick={onSignOut}
               className="min-h-11 rounded-xl border-[#d9ded9] bg-white px-4 text-[#17333b] hover:bg-[#edf2ed]"
             >
               <LogOut className="size-4" aria-hidden="true" />
-              Sign out
+              {isSigningOut ? 'Signing out...' : 'Sign out'}
             </Button>
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-6xl space-y-8 px-6 py-10 sm:px-10 sm:py-14">
+        {signOutError ? (
+          <p role="alert" className="rounded-xl bg-[#f9e7e2] px-4 py-3 text-sm text-[#8b3f31]">
+            {signOutError}
+          </p>
+        ) : null}
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1.7fr)_minmax(260px,0.8fr)]">
           <section className="relative overflow-hidden rounded-3xl bg-[#17333b] p-8 text-white sm:p-10">
             <div className="pointer-events-none absolute -right-28 -top-32 size-80 rounded-full border border-white/10" />

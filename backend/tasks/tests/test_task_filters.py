@@ -63,14 +63,16 @@ class TaskFilterTests(APITestCase):
             {'due_date': ''},
             {'due_after': ''},
             {'due_before': ''},
-            {'due_after': '2026-10-12', 'due_before': '2026-10-11'},
         )
 
         for filters in invalid_filters:
             with self.subTest(filters=filters):
                 self.assertEqual(self.client.get(url, filters).status_code, 400)
 
-        response = self.client.get(url, {
+    def test_rejects_reversed_date_range(self):
+        """Reject a range whose start comes after its end."""
+        response = self.client.get(reverse('tasks:list'), {
             'due_after': '2026-10-12', 'due_before': '2026-10-11',
         })
+        self.assertEqual(response.status_code, 400)
         self.assertIn('due_after', response.data)

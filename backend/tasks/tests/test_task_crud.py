@@ -104,10 +104,15 @@ class TaskCrudTests(APITestCase):
         task.refresh_from_db()
         self.assertEqual(task.status, Task.Status.BLOCKED)
         self.assertEqual(task.title, 'Draft')
+
+    def test_status_route_rejects_put(self):
+        """Allow status changes only through PATCH."""
+        task = Task.objects.create(title='Draft', created_by=self.creator)
+        url = reverse('tasks:status', args=[task.pk])
         self.assertEqual(self.client.put(url, {'status': 'done'}).status_code, 405)
 
     def test_status_route_rejects_invalid_status(self):
-        """Reject missing and unknown task statuses."""
+        """Reject unknown task statuses."""
         task = Task.objects.create(title='Draft', created_by=self.creator)
         url = reverse('tasks:status', args=[task.pk])
 
@@ -115,12 +120,22 @@ class TaskCrudTests(APITestCase):
             {'status': 'pending'},
             {'status': 'completed'},
             {'status': 'unknown'},
-            {},
         ):
             with self.subTest(data=data):
                 response = self.client.patch(url, data, format='json')
                 self.assertEqual(response.status_code, 400)
 
+        task.refresh_from_db()
+        self.assertEqual(task.status, Task.Status.PLANNED)
+
+    def test_status_route_requires_status(self):
+        """Require a status value even for a partial update."""
+        task = Task.objects.create(title='Draft', created_by=self.creator)
+        response = self.client.patch(
+            reverse('tasks:status', args=[task.pk]), {}, format='json'
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('status', response.data)
         task.refresh_from_db()
         self.assertEqual(task.status, Task.Status.PLANNED)
 
@@ -149,16 +164,21 @@ class TaskCrudTests(APITestCase):
         self.assertEqual(response.status_code, 204)
         self.assertFalse(Task.objects.filter(pk=task.pk).exists())
 
-    def test_rejects_invalid_task_data(self):
-        """Reject a blank title and an unknown assignee."""
-        url = reverse('tasks:list')
-
-        self.assertEqual(
-            self.client.post(url, {'title': ''}, format='json').status_code, 400
-        )
+    def test_rejects_blank_title(self):
+        """Reject a task without a title."""
         self.assertEqual(
             self.client.post(
-                url, {'title': 'Draft', 'assigned_to': 99999}, format='json'
+                reverse('tasks:list'), {'title': ''}, format='json'
+            ).status_code,
+            400,
+        )
+
+    def test_rejects_unknown_assignee(self):
+        """Reject an assignee who does not exist."""
+        self.assertEqual(
+            self.client.post(
+                reverse('tasks:list'), {'title': 'Draft', 'assigned_to': 99999},
+                format='json',
             ).status_code,
             400,
         )

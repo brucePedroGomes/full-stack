@@ -8,9 +8,10 @@ from .models import Task
 
 class TaskFilterForm(forms.Form):
     def clean(self) -> dict[str, object]:
+        """Reject blank filters and a date range in reverse order."""
         cleaned_data = super().clean() or {}
         for name in ('status', 'due_date', 'due_after', 'due_before'):
-            if name in self.data and self.data.get(name) == '':
+            if self.data.get(name) == '':
                 self.add_error(name, 'This field may not be blank.')
 
         due_after = cleaned_data.get('due_after')

@@ -7,9 +7,15 @@ from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from users import browser_auth
+
 from .health import HealthView
 
 urlpatterns = [
+    path('api/auth/browser/csrf/', browser_auth.BrowserCsrfView.as_view(), name='browser-csrf'),
+    path('api/auth/browser/login/', browser_auth.BrowserLoginView.as_view(), name='browser-login'),
+    path('api/auth/browser/token/', browser_auth.BrowserTokenView.as_view(), name='browser-token'),
+    path('api/auth/browser/logout/', browser_auth.BrowserLogoutView.as_view(), name='browser-logout'),
     path('api/auth/token/', TokenObtainPairView.as_view(), name='token-obtain'),
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
     path('api/tasks/', include('tasks.urls')),

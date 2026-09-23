@@ -19,6 +19,7 @@ class TaskStatusSerializer(serializers.ModelSerializer[Task]):
         fields = ['status']
 
     def validate(self, attrs: dict[str, str]) -> dict[str, str]:
+        """Require status even when PATCH makes serializer fields optional."""
         if 'status' not in attrs:
             raise serializers.ValidationError({'status': 'This field is required.'})
         return attrs

@@ -23,6 +23,17 @@ class HealthTests(SimpleTestCase):
         self.assertEqual(response.json(), {'status': 'ok'})
         self.assertIn('no-store', response.headers['Cache-Control'])
 
+    def test_head_is_allowed(self):
+        """Let health clients check headers without a response body."""
+        response = self.client.head('/health/live/', HTTP_HOST='localhost')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'')
+
+    def test_post_is_not_allowed(self):
+        """Keep health checks read only."""
+        response = self.client.post('/health/live/', HTTP_HOST='localhost')
+        self.assertEqual(response.status_code, 405)
+
     def test_admin_still_requires_https(self):
         """The HTTP exception for health checks does not apply to admin."""
         response = self.client.get('/admin/login/', HTTP_HOST='localhost')

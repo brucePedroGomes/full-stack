@@ -1,4 +1,4 @@
-from django.contrib.auth import get_user_model
+from django.contrib.auth.models import User
 from django.test import override_settings
 from django.urls import reverse
 from rest_framework.test import APITestCase
@@ -7,23 +7,34 @@ from rest_framework.test import APITestCase
 @override_settings(ALLOWED_HOSTS=['testserver'], SECURE_SSL_REDIRECT=False)
 class JWTAuthenticationTests(APITestCase):
     def setUp(self):
-        self.user = get_user_model().objects.create_user(
+        self.user = User.objects.create_user(
             username='ana', password='example-password'
         )
 
-    def test_access_token_authenticates_api_and_refresh_renews_it(self):
-        """Use JWT access and refresh tokens for protected routes."""
-        response = self.client.post(
+    def obtain_tokens(self):
+        return self.client.post(
             reverse('token-obtain'),
             {'username': 'ana', 'password': 'example-password'},
             format='json',
         )
+
+    def test_login_returns_token_pair(self):
+        """Return access and refresh tokens for valid credentials."""
+        response = self.obtain_tokens()
         self.assertEqual(response.status_code, 200)
         self.assertIn('access', response.data)
         self.assertIn('refresh', response.data)
 
+    def test_access_token_authenticates_api(self):
+        """Use an access token to read the current user's account."""
+        response = self.obtain_tokens()
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {response.data["access"]}')
         self.assertEqual(self.client.get(reverse('users:me')).status_code, 200)
+
+    def test_access_token_allows_task_creation(self):
+        """Use an access token to create a task."""
+        response = self.obtain_tokens()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {response.data["access"]}')
         self.assertEqual(
             self.client.post(
                 reverse('tasks:list'), {'title': 'Team task'}, format='json'
@@ -31,7 +42,9 @@ class JWTAuthenticationTests(APITestCase):
             201,
         )
 
-        self.client.credentials()
+    def test_refresh_token_renews_access(self):
+        """Use a refresh token to get another valid access token."""
+        response = self.obtain_tokens()
         refreshed = self.client.post(
             reverse('token-refresh'), {'refresh': response.data['refresh']},
             format='json',
@@ -40,10 +53,10 @@ class JWTAuthenticationTests(APITestCase):
         self.client.credentials(
             HTTP_AUTHORIZATION=f'Bearer {refreshed.data["access"]}'
         )
-        self.assertEqual(self.client.get(reverse('tasks:list')).data['count'], 1)
+        self.assertEqual(self.client.get(reverse('users:me')).status_code, 200)
 
-    def test_bad_credentials_and_invalid_token_are_rejected(self):
-        """Reject bad passwords and invalid access tokens."""
+    def test_bad_credentials_are_rejected(self):
+        """Reject a login attempt with the wrong password."""
         response = self.client.post(
             reverse('token-obtain'),
             {'username': 'ana', 'password': 'wrong-password'},
@@ -51,6 +64,8 @@ class JWTAuthenticationTests(APITestCase):
         )
         self.assertEqual(response.status_code, 401)
 
+    def test_invalid_access_token_is_rejected(self):
+        """Reject an API request with an invalid token."""
         self.client.credentials(HTTP_AUTHORIZATION='Bearer invalid-token')
         self.assertEqual(self.client.get(reverse('users:me')).status_code, 401)
 
