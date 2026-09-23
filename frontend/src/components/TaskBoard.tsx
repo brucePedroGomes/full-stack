@@ -1,12 +1,12 @@
 import { taskStatuses, type Task, type TaskStatus } from '@/api/tasks'
 import { TaskCard } from './TaskCard'
 
-const statusColors: Record<TaskStatus, string> = {
-  planned: 'bg-gray-500',
-  to_do: 'bg-blue-600',
-  in_progress: 'bg-amber-500',
-  blocked: 'bg-red-600',
-  done: 'bg-emerald-600',
+const statusColors: Record<TaskStatus, { dot: string; column: string }> = {
+  planned: { dot: 'bg-gray-500', column: 'border-gray-200 bg-gray-100' },
+  to_do: { dot: 'bg-blue-600', column: 'border-blue-200 bg-blue-50' },
+  in_progress: { dot: 'bg-amber-500', column: 'border-amber-200 bg-amber-50' },
+  blocked: { dot: 'bg-red-600', column: 'border-red-200 bg-red-50' },
+  done: { dot: 'bg-emerald-600', column: 'border-emerald-200 bg-emerald-50' },
 }
 
 type TaskBoardProps = {
@@ -35,12 +35,12 @@ export function TaskBoard({
           <section
             key={status.value}
             aria-labelledby={`column-${status.value}`}
-            className="min-w-0 rounded-xl border border-gray-200 bg-gray-100 p-3"
+            className={`min-w-0 rounded-xl border p-3 ${statusColors[status.value].column}`}
           >
             <div className="mb-3 flex items-center gap-2 px-1 py-2">
               <span
                 aria-hidden="true"
-                className={`size-2.5 shrink-0 rounded-full ${statusColors[status.value]}`}
+                className={`size-2.5 shrink-0 rounded-full ${statusColors[status.value].dot}`}
               />
               <h2
                 id={`column-${status.value}`}
