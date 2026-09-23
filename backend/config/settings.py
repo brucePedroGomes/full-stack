@@ -107,6 +107,14 @@ if env.DB_SSLROOTCERT:
 
 # Password checks
 
+PASSWORD_PEPPER = env.PASSWORD_PEPPER
+ARGON2_TIME_COST = env.ARGON2_TIME_COST
+ARGON2_MEMORY_COST = env.ARGON2_MEMORY_COST
+ARGON2_PARALLELISM = env.ARGON2_PARALLELISM
+PASSWORD_HASHERS = [
+    'config.hashers.ConfigurableArgon2PasswordHasher',
+]
+
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',

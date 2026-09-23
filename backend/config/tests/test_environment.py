@@ -10,6 +10,7 @@ class EnvTests(TestCase):
         """Give each test its own fake environment."""
         self.values = {
             'DJANGO_SECRET_KEY': 'test-only-secret',
+            'DJANGO_PASSWORD_PEPPER': 'ab' * 32,
             'DB_NAME': 'test',
             'DB_USER': 'test',
             'DB_PASSWORD': 'test',
@@ -33,6 +34,25 @@ class EnvTests(TestCase):
         self.assertFalse(env.SESSION_COOKIE_SECURE)
         self.assertFalse(env.CSRF_COOKIE_SECURE)
 
+    def test_argon2_defaults(self):
+        env = Env(self.values)
+        self.assertEqual(env.ARGON2_TIME_COST, 2)
+        self.assertEqual(env.ARGON2_MEMORY_COST, 102400)
+        self.assertEqual(env.ARGON2_PARALLELISM, 8)
+
+    def test_invalid_argon2_values_are_rejected(self):
+        for name in ('TIME_COST', 'MEMORY_COST', 'PARALLELISM'):
+            key = f'DJANGO_ARGON2_{name}'
+            for value in ('0', '-1', '', 'invalid', '1.5'):
+                with self.subTest(setting=key, value=value):
+                    with self.assertRaisesRegex(ImproperlyConfigured, key):
+                        Env({**self.values, key: value})
+
+    def test_argon2_memory_must_support_parallelism(self):
+        self.values['DJANGO_ARGON2_MEMORY_COST'] = '63'
+        with self.assertRaisesRegex(ImproperlyConfigured, 'DJANGO_ARGON2_MEMORY_COST'):
+            Env(self.values)
+
     def test_invalid_boolean_is_rejected(self):
         """A typo in a boolean produces a clear error."""
         self.values['DJANGO_DEBUG'] = 'flase'
@@ -49,6 +69,25 @@ class EnvTests(TestCase):
         """Spaces alone do not count as a secret."""
         self.values['DJANGO_SECRET_KEY'] = '   '
         with self.assertRaisesRegex(ImproperlyConfigured, 'DJANGO_SECRET_KEY'):
+            Env(self.values)
+
+    def test_missing_pepper_is_rejected(self):
+        del self.values['DJANGO_PASSWORD_PEPPER']
+        with self.assertRaisesRegex(ImproperlyConfigured, 'DJANGO_PASSWORD_PEPPER'):
+            Env(self.values)
+
+    def test_invalid_pepper_is_rejected_without_exposing_it(self):
+        for value in ('', '   ', 'short-secret', 'g' * 64, 'ab' * 31):
+            with self.subTest(value=value):
+                with self.assertRaises(ImproperlyConfigured) as error:
+                    Env({**self.values, 'DJANGO_PASSWORD_PEPPER': value})
+                self.assertIn('DJANGO_PASSWORD_PEPPER', str(error.exception))
+                if value.strip():
+                    self.assertNotIn(value, str(error.exception))
+
+    def test_pepper_cannot_reuse_django_secret(self):
+        self.values['DJANGO_SECRET_KEY'] = self.values['DJANGO_PASSWORD_PEPPER']
+        with self.assertRaisesRegex(ImproperlyConfigured, 'must be different'):
             Env(self.values)
 
     def test_port_becomes_an_integer(self):

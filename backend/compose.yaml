@@ -21,7 +21,11 @@ services:
     environment:
       DJANGO_DEBUG: "true"
       DJANGO_SECRET_KEY: django-insecure-local-development-only
+      DJANGO_PASSWORD_PEPPER: ${DJANGO_PASSWORD_PEPPER:?Set DJANGO_PASSWORD_PEPPER in backend/.env}
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,[::1]
+      DJANGO_ARGON2_TIME_COST: ${DJANGO_ARGON2_TIME_COST:-2}
+      DJANGO_ARGON2_MEMORY_COST: ${DJANGO_ARGON2_MEMORY_COST:-102400}
+      DJANGO_ARGON2_PARALLELISM: ${DJANGO_ARGON2_PARALLELISM:-8}
       DB_NAME: challenge
       DB_USER: challenge
       DB_PASSWORD: local-dev-password

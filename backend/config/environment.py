@@ -1,6 +1,7 @@
 """Read and validate environment values before Django starts."""
 
 import os
+import re
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -12,6 +13,26 @@ class Env:
         self._values = dict(os.environ if values is None else values)
 
         self.SECRET_KEY = self._required('DJANGO_SECRET_KEY')
+        self.PASSWORD_PEPPER = self._required('DJANGO_PASSWORD_PEPPER')
+        if not re.fullmatch(r'[0-9a-fA-F]{64}', self.PASSWORD_PEPPER):
+            raise ImproperlyConfigured(
+                'DJANGO_PASSWORD_PEPPER must contain exactly 64 hexadecimal characters.'
+            )
+        if self.PASSWORD_PEPPER == self.SECRET_KEY:
+            raise ImproperlyConfigured(
+                'DJANGO_PASSWORD_PEPPER must be different from DJANGO_SECRET_KEY.'
+            )
+        self.ARGON2_TIME_COST = self._int('DJANGO_ARGON2_TIME_COST', 2)
+        self.ARGON2_MEMORY_COST = self._int('DJANGO_ARGON2_MEMORY_COST', 102400)
+        self.ARGON2_PARALLELISM = self._int('DJANGO_ARGON2_PARALLELISM', 8)
+        for name in ('ARGON2_TIME_COST', 'ARGON2_MEMORY_COST', 'ARGON2_PARALLELISM'):
+            if getattr(self, name) <= 0:
+                raise ImproperlyConfigured(f'DJANGO_{name} must be positive.')
+        if self.ARGON2_MEMORY_COST < 8 * self.ARGON2_PARALLELISM:
+            raise ImproperlyConfigured(
+                'DJANGO_ARGON2_MEMORY_COST must be at least '
+                '8 times DJANGO_ARGON2_PARALLELISM (in KiB).'
+            )
         self.DEBUG = self._bool('DJANGO_DEBUG')
         self.ALLOWED_HOSTS = self._list('DJANGO_ALLOWED_HOSTS')
         self.SESSION_COOKIE_SECURE = self._bool(
