@@ -1,4 +1,52 @@
 import { expect, test } from './support/workspace'
+import { mockApi } from './support/mock-api'
+
+test('signs in with CSRF protection and signs out', async ({ page }) => {
+  /** Checks real Axios form encoding and browser-session headers. */
+  await mockApi(page)
+  await page.route('**/api/auth/browser/token/', (route) =>
+    route.fulfill({ status: 401 }),
+  )
+  await page.goto('/')
+  await page.getByLabel('Username').fill('ana')
+  await page.getByLabel('Password').fill('password & spaces')
+  const loginRequest = page.waitForRequest('**/api/auth/browser/login/')
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+  const request = await loginRequest
+  expect(request.headers()['x-csrftoken']).toBe('test-csrf')
+  expect(request.headers()['content-type']).toContain(
+    'application/x-www-form-urlencoded',
+  )
+  expect(Object.fromEntries(new URLSearchParams(request.postData()!))).toEqual({
+    username: 'ana',
+    password: 'password & spaces',
+  })
+  await expect(
+    page.getByRole('heading', { name: 'Tasks', exact: true }),
+  ).toBeVisible()
+  const logoutRequest = page.waitForRequest('**/api/auth/browser/logout/')
+  await page.getByRole('button', { name: 'Sign out' }).click()
+  expect((await logoutRequest).headers()['x-csrftoken']).toBe('test-csrf')
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
+})
+
+test('shows a clear error for incorrect credentials', async ({ page }) => {
+  /** Converts the Axios 401 response into the login message. */
+  await mockApi(page)
+  await page.route('**/api/auth/browser/token/', (route) =>
+    route.fulfill({ status: 401 }),
+  )
+  await page.route('**/api/auth/browser/login/', (route) =>
+    route.fulfill({ status: 401 }),
+  )
+  await page.goto('/')
+  await page.getByLabel('Username').fill('ana')
+  await page.getByLabel('Password').fill('wrong')
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+  await expect(page.getByRole('alert')).toHaveText(
+    'The username or password is incorrect.',
+  )
+})
 
 test('returns to login when the session expires during a status change', async ({
   page,

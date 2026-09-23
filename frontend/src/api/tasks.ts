@@ -70,21 +70,19 @@ export async function getTasks(
   if (typeof filters.assignee === 'number')
     params.set('assigned_to', String(filters.assignee))
   if (filters.assignee === 'unassigned') params.set('unassigned', 'true')
-  const response = await requestWithSession(`/api/tasks/?${params}`, session, {
+  return requestWithSession<TaskPage>(`/api/tasks/?${params}`, session, {
     signal,
   })
-  return response.json() as Promise<TaskPage>
 }
 
 export async function createTask(
   session: Session,
   values: TaskInput,
 ): Promise<Task> {
-  const response = await requestWithSession('/api/tasks/', session, {
+  return requestWithSession<Task>('/api/tasks/', session, {
     method: 'post',
-    json: values,
+    data: values,
   })
-  return response.json() as Promise<Task>
 }
 
 export async function updateTask(
@@ -92,11 +90,10 @@ export async function updateTask(
   id: number,
   values: TaskInput,
 ): Promise<Task> {
-  const response = await requestWithSession(`/api/tasks/${id}/`, session, {
+  return requestWithSession<Task>(`/api/tasks/${id}/`, session, {
     method: 'patch',
-    json: values,
+    data: values,
   })
-  return response.json() as Promise<Task>
 }
 
 export async function deleteTask(session: Session, id: number): Promise<void> {
@@ -108,11 +105,10 @@ export async function updateTaskStatus(
   id: number,
   status: TaskStatus,
 ): Promise<TaskStatus> {
-  const response = await requestWithSession(
+  const data = await requestWithSession<{ status: TaskStatus }>(
     `/api/tasks/${id}/status/`,
     session,
-    { method: 'patch', json: { status } },
+    { method: 'patch', data: { status } },
   )
-  const data = (await response.json()) as { status: TaskStatus }
   return data.status
 }

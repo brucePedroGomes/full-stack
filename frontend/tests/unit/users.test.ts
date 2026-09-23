@@ -17,7 +17,7 @@ test('loads one user page with search and cancellation', async () => {
     next: 'https://external.example/?page=3',
     results: [],
   }
-  vi.mocked(requestWithSession).mockResolvedValueOnce(Response.json(result))
+  vi.mocked(requestWithSession).mockResolvedValueOnce(result)
   await expect(getUsers(session, 'Ana Silva', 2, signal)).resolves.toEqual(
     result,
   )

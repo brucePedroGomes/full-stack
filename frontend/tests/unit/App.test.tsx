@@ -25,7 +25,7 @@ vi.mock('@/api/session', async (importOriginal) => {
 beforeEach(() => {
   vi.mocked(requestWithSession).mockImplementation(async (path) => {
     const tasks = path.startsWith('/api/tasks/') ? [makeTask()] : []
-    return Response.json({ count: tasks.length, next: null, results: tasks })
+    return { count: tasks.length, next: null, results: tasks }
   })
 })
 

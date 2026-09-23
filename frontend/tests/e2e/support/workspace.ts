@@ -11,13 +11,13 @@ export const test = base.extend<{ workspace: Workspace }>({
   workspace: async ({ page }, use) => {
     const taskRequests: URL[] = []
     const userRequests: URL[] = []
-    function recordRequest(request: Request): void {
+    function recordFinishedRequest(request: Request): void {
       const url = new URL(request.url())
       if (request.method() !== 'GET') return
       if (url.pathname === '/api/tasks/') taskRequests.push(url)
       if (url.pathname === '/api/users/') userRequests.push(url)
     }
-    page.on('request', recordRequest)
+    page.on('requestfinished', recordFinishedRequest)
     let opened = false
     await use({
       taskRequests,
@@ -36,7 +36,7 @@ export const test = base.extend<{ workspace: Workspace }>({
         ).toHaveCount(0)
       },
     })
-    page.off('request', recordRequest)
+    page.off('requestfinished', recordFinishedRequest)
   },
 })
 

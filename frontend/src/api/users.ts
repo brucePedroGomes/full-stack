@@ -34,8 +34,7 @@ export async function getUsers(
     page_size: String(PAGE_SIZE),
   })
   if (search) params.set('search', search)
-  const response = await requestWithSession(`/api/users/?${params}`, session, {
+  return requestWithSession<UserPage>(`/api/users/?${params}`, session, {
     signal,
   })
-  return response.json() as Promise<UserPage>
 }

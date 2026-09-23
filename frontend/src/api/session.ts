@@ -1,7 +1,9 @@
 import Cookies from 'js-cookie'
-import ky, { isHTTPError, isKyError, type Options } from 'ky'
+import axios, { isAxiosError, type AxiosRequestConfig } from 'axios'
 import { queryOptions } from '@tanstack/react-query'
 import type { UserSummary } from './users'
+
+const http = axios.create({ adapter: 'fetch', timeout: 10_000 })
 
 export type Account = UserSummary & { email: string }
 export type Session = { access: string }
@@ -25,21 +27,18 @@ export class SessionExpiredError extends Error {}
 
 export function getApiErrorMessage(error: unknown): string {
   if (error instanceof SessionExpiredError) return error.message
-  if (isHTTPError(error)) {
-    return 'The server could not finish the request. Please try again.'
+  if (isAxiosError(error)) {
+    return error.response
+      ? 'The server could not finish the request. Please try again.'
+      : 'Cannot reach the server. Please check that Django is running.'
   }
-  if (isKyError(error))
-    return 'Cannot reach the server. Please check that Django is running.'
   if (error instanceof Error) return error.message
   return 'Something went wrong. Please try again.'
 }
 
 async function csrfToken(signal?: AbortSignal): Promise<string> {
   if (!Cookies.get('csrftoken')) {
-    await ky.get('/api/auth/browser/csrf/', {
-      credentials: 'same-origin',
-      signal,
-    })
+    await http.get('/api/auth/browser/csrf/', { signal })
   }
 
   const token = Cookies.get('csrftoken')
@@ -48,17 +47,16 @@ async function csrfToken(signal?: AbortSignal): Promise<string> {
   return token
 }
 
-async function browserPost(
+async function browserPost<T = void>(
   path: string,
   body?: URLSearchParams,
   signal?: AbortSignal,
-): Promise<Response> {
-  return ky.post(path, {
-    body,
-    credentials: 'same-origin',
+): Promise<T> {
+  const response = await http.post<T>(path, body, {
     headers: { 'X-CSRFToken': await csrfToken(signal) },
     signal,
   })
+  return response.data
 }
 
 export async function signIn(
@@ -66,13 +64,12 @@ export async function signIn(
   password: string,
 ): Promise<Session> {
   try {
-    const response = await browserPost(
+    return await browserPost<Session>(
       '/api/auth/browser/login/',
       new URLSearchParams({ username, password }),
     )
-    return response.json() as Promise<Session>
   } catch (error) {
-    if (isHTTPError(error) && error.response.status === 401) {
+    if (isAxiosError(error) && error.response?.status === 401) {
       throw new Error('The username or password is incorrect.')
     }
     throw error
@@ -83,14 +80,13 @@ export async function restoreSession(
   signal?: AbortSignal,
 ): Promise<Session | null> {
   try {
-    const response = await browserPost(
+    return await browserPost<Session>(
       '/api/auth/browser/token/',
       undefined,
       signal,
     )
-    return response.json() as Promise<Session>
   } catch (error) {
-    if (isHTTPError(error) && error.response.status === 401) return null
+    if (isAxiosError(error) && error.response?.status === 401) return null
     throw error
   }
 }
@@ -112,31 +108,35 @@ async function refreshAccess(
   session.access = refreshed.access
 }
 
-export async function requestWithSession(
+export async function requestWithSession<T = unknown>(
   path: string,
   session: Session,
   {
     signal,
     method = 'get',
-    json,
-  }: Pick<Options, 'signal' | 'method' | 'json'> = {},
-): Promise<Response> {
-  async function request(): Promise<Response> {
+    data,
+  }: Pick<AxiosRequestConfig<unknown>, 'method' | 'data'> & {
+    signal?: AbortSignal
+  } = {},
+): Promise<T> {
+  async function request(): Promise<T> {
     try {
-      return await ky(path, {
+      const response = await http.request<T>({
+        url: path,
         method,
-        json,
-        retry: method === 'get' ? 2 : 0,
-        credentials: 'omit',
-        cache: 'no-store',
+        data,
+        withCredentials: false,
+        fetchOptions: { cache: 'no-store' },
         headers: { Authorization: `Bearer ${session.access}` },
         signal,
       })
+      return response.data
     } catch (error) {
-      if (isHTTPError(error) && error.response.status === 400) {
-        const data: Record<string, string | string[]> =
-          await error.response.json()
-        throw new Error(Object.values(data).flat().join(' '))
+      if (
+        isAxiosError<Record<string, string | string[]>>(error) &&
+        error.response?.status === 400
+      ) {
+        throw new Error(Object.values(error.response.data).flat().join(' '))
       }
       throw error
     }
@@ -145,14 +145,14 @@ export async function requestWithSession(
   try {
     return await request()
   } catch (error) {
-    if (!isHTTPError(error) || error.response.status !== 401) throw error
+    if (!isAxiosError(error) || error.response?.status !== 401) throw error
   }
 
   await refreshAccess(session, signal ?? undefined)
   try {
     return await request()
   } catch (error) {
-    if (isHTTPError(error) && error.response.status === 401) {
+    if (isAxiosError(error) && error.response?.status === 401) {
       throw new SessionExpiredError(
         'Your session has expired. Please sign in again.',
       )
@@ -165,8 +165,7 @@ export async function getAccount(
   session: Session,
   signal?: AbortSignal,
 ): Promise<Account> {
-  const response = await requestWithSession('/api/users/me/', session, {
+  return requestWithSession<Account>('/api/users/me/', session, {
     signal,
   })
-  return response.json() as Promise<Account>
 }
