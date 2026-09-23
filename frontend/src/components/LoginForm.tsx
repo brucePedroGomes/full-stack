@@ -1,5 +1,14 @@
-import type { ReactElement } from 'react'
-import { getApiErrorMessage, type Credentials } from '@/api/session'
+import {
+  useCallback,
+  useState,
+  type SubmitEvent,
+  type ReactElement,
+} from 'react'
+import {
+  credentialsSchema,
+  getApiErrorMessage,
+  type Credentials,
+} from '@/api/session'
 
 type LoginFormProps = {
   onSignIn: (values: Credentials) => void
@@ -14,6 +23,23 @@ export function LoginForm({
   error,
   notice,
 }: LoginFormProps): ReactElement {
+  const [validationError, setValidationError] = useState('')
+  const handleSubmit = useCallback(
+    (event: SubmitEvent<HTMLFormElement>) => {
+      event.preventDefault()
+      const result = credentialsSchema.safeParse(
+        Object.fromEntries(new FormData(event.currentTarget)),
+      )
+      if (!result.success) {
+        setValidationError(result.error.issues[0].message)
+        return
+      }
+      setValidationError('')
+      onSignIn(result.data)
+    },
+    [onSignIn],
+  )
+
   return (
     <main className="mx-auto max-w-sm px-6 py-16 text-gray-900">
       <h1 className="text-2xl font-semibold">Sign in</h1>
@@ -22,17 +48,7 @@ export function LoginForm({
           {notice}
         </p>
       ) : null}
-      <form
-        className="mt-6 space-y-4"
-        onSubmit={(event) => {
-          event.preventDefault()
-          const data = new FormData(event.currentTarget)
-          onSignIn({
-            username: String(data.get('username')).trim(),
-            password: String(data.get('password')),
-          })
-        }}
-      >
+      <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
         <label className="block">
           Username
           <input
@@ -53,9 +69,9 @@ export function LoginForm({
             required
           />
         </label>
-        {error ? (
+        {validationError || error ? (
           <p role="alert" className="text-red-700">
-            {getApiErrorMessage(error)}
+            {validationError || getApiErrorMessage(error)}
           </p>
         ) : null}
         <button

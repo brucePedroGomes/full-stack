@@ -1,13 +1,30 @@
 import { expect, test, vi } from 'vitest'
 import { PAGE_SIZE } from '@/config'
 import { requestWithSession } from '@/api/session'
-import { deleteTask, getTasks, updateTaskStatus } from '@/api/tasks'
+import {
+  deleteTask,
+  getTasks,
+  taskInputSchema,
+  updateTaskStatus,
+} from '@/api/tasks'
 import { makeTask } from '../support/fixtures'
 
 vi.mock('@/api/session', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api/session')>()),
   requestWithSession: vi.fn(),
 }))
+
+test('validates calendar dates and preserves an empty deadline', () => {
+  /** Keeps date-only values without timezone conversion. */
+  const values = { title: 'Report', description: '', assigned_to: null }
+  expect(
+    taskInputSchema.safeParse({ ...values, due_date: '2026-02-30' }).success,
+  ).toBe(false)
+  expect(
+    taskInputSchema.parse({ ...values, due_date: '2028-02-29' }).due_date,
+  ).toBe('2028-02-29')
+  expect(taskInputSchema.parse({ ...values, due_date: '' }).due_date).toBeNull()
+})
 
 test('loads only the requested page and keeps the backend count', async () => {
   /** Checks that a next URL does not start another request. */

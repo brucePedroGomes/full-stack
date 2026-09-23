@@ -8,7 +8,7 @@ type Workspace = {
 }
 
 export const test = base.extend<{ workspace: Workspace }>({
-  workspace: async ({ page }, use) => {
+  workspace: async ({ page }, provideWorkspace) => {
     const taskRequests: URL[] = []
     const userRequests: URL[] = []
     function recordFinishedRequest(request: Request): void {
@@ -19,7 +19,7 @@ export const test = base.extend<{ workspace: Workspace }>({
     }
     page.on('requestfinished', recordFinishedRequest)
     let opened = false
-    await use({
+    await provideWorkspace({
       taskRequests,
       userRequests,
       async open(data) {

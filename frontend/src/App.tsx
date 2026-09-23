@@ -40,6 +40,15 @@ export default function App(): ReactElement {
     mutationFn: signOut,
     onSuccess: () => endSession('You have signed out.'),
   })
+  const { mutate: loginUser } = login
+  const { mutate: logoutUser } = logout
+  const handleSignIn = useCallback(
+    (values: Credentials) => {
+      loginUser(values)
+    },
+    [loginUser],
+  )
+  const handleSignOut = useCallback(() => logoutUser(), [logoutUser])
 
   if (session.isPending)
     return (
@@ -50,7 +59,7 @@ export default function App(): ReactElement {
   if (!session.data) {
     return (
       <LoginForm
-        onSignIn={(values) => login.mutate(values)}
+        onSignIn={handleSignIn}
         pending={login.isPending}
         error={login.error || session.error}
         notice={notice}
@@ -67,7 +76,7 @@ export default function App(): ReactElement {
           <button
             className="min-h-11 rounded border border-gray-300 px-4 hover:bg-gray-100 disabled:opacity-50"
             disabled={logout.isPending}
-            onClick={() => logout.mutate()}
+            onClick={handleSignOut}
           >
             {logout.isPending ? 'Signing out...' : 'Sign out'}
           </button>

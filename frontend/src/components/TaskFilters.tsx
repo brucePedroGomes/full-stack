@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState, type SubmitEvent } from 'react'
 import type { Session } from '@/api/session'
 import {
   defaultFilters,
@@ -20,24 +20,30 @@ export function TaskFilters({
 }: TaskFiltersProps) {
   const [assignee, setAssignee] = useState<UserSelection>('all')
 
+  const handleSubmit = useCallback(
+    (event: SubmitEvent<HTMLFormElement>) => {
+      event.preventDefault()
+      const data = new FormData(event.currentTarget)
+      onApply({
+        search: String(data.get('search')).trim(),
+        status: data.get('status') as Filters['status'],
+        due_date: String(data.get('due_date')),
+        assignee: assignee === 'all' ? 'all' : (assignee?.id ?? 'unassigned'),
+      })
+    },
+    [assignee, onApply],
+  )
+  const handleReset = useCallback(() => {
+    setAssignee('all')
+    onApply(defaultFilters)
+  }, [onApply])
+
   return (
     <form
       aria-label="Task filters"
       className="grid gap-4 rounded border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4"
-      onSubmit={(event) => {
-        event.preventDefault()
-        const data = new FormData(event.currentTarget)
-        onApply({
-          search: String(data.get('search')).trim(),
-          status: data.get('status') as Filters['status'],
-          due_date: String(data.get('due_date')),
-          assignee: assignee === 'all' ? 'all' : (assignee?.id ?? 'unassigned'),
-        })
-      }}
-      onReset={() => {
-        setAssignee('all')
-        onApply(defaultFilters)
-      }}
+      onSubmit={handleSubmit}
+      onReset={handleReset}
     >
       <label className="block">
         Search tasks

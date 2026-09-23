@@ -1,5 +1,35 @@
 import { expect, test } from './support/workspace'
 
+test('validates a task title before sending it to the server', async ({
+  page,
+  workspace,
+}) => {
+  /** Preserves the draft and allows correction after validation fails. */
+  await workspace.open({ tasks: [] })
+  let writes = 0
+  page.on('request', (request) => {
+    if (
+      new URL(request.url()).pathname === '/api/tasks/' &&
+      request.method() === 'POST'
+    )
+      writes += 1
+  })
+  await page.getByRole('button', { name: 'New task', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Title', { exact: true }).fill('   ')
+  await dialog.getByLabel('Description').fill('Keep this draft')
+  await dialog.getByRole('button', { name: 'Save task' }).click()
+  await expect(dialog.getByRole('alert')).toHaveText('Enter a task title.')
+  await expect(dialog.getByLabel('Description')).toHaveValue('Keep this draft')
+  expect(writes).toBe(0)
+  await dialog.getByLabel('Title', { exact: true }).fill('Validated task')
+  await dialog.getByRole('button', { name: 'Save task' }).click()
+  await expect(
+    page.getByRole('heading', { name: 'Validated task' }),
+  ).toBeVisible()
+  expect(writes).toBe(1)
+})
+
 test('creates, edits, and deletes a task', async ({ page, workspace }) => {
   /** Saves each change through the API and survives a reload. */
   await workspace.open({ tasks: [] })

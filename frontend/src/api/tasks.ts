@@ -1,4 +1,5 @@
 import { queryOptions } from '@tanstack/react-query'
+import { z } from 'zod'
 import { PAGE_SIZE } from '@/config'
 import { requestWithSession, type Session } from './session'
 import type { UserSummary } from './users'
@@ -12,19 +13,25 @@ export const taskStatuses = [
 ] as const
 
 export type TaskStatus = (typeof taskStatuses)[number]['value']
-export type Task = {
+export const taskInputSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(1, 'Enter a task title.')
+    .max(200, 'Use 200 characters or fewer for the title.'),
+  description: z.string().trim(),
+  due_date: z.preprocess(
+    (value) => (value === '' ? null : value),
+    z.iso.date({ error: 'Enter a valid due date.' }).nullable(),
+  ),
+  assigned_to: z.number().int().positive().nullable(),
+})
+export type TaskInput = z.infer<typeof taskInputSchema>
+export type Task = TaskInput & {
   id: number
-  title: string
-  description: string
   status: TaskStatus
-  due_date: string | null
-  assigned_to: number | null
   assignee: UserSummary | null
 }
-export type TaskInput = Pick<
-  Task,
-  'title' | 'description' | 'due_date' | 'assigned_to'
->
 export type TaskPage = { count: number; next: string | null; results: Task[] }
 export type TaskFilters = {
   search: string

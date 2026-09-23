@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type KeyboardEvent,
+} from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   getApiErrorMessage,
@@ -9,6 +16,7 @@ import { getUserName, usersQuery, type UserSummary } from '@/api/users'
 import { Pagination } from './Pagination'
 
 export type UserSelection = UserSummary | 'all' | null
+const emptyUsers: UserSummary[] = []
 
 type UserSelectProps = {
   label: string
@@ -32,17 +40,39 @@ export function UserSelect({
   const [page, setPage] = useState(1)
   const users = useQuery(usersQuery(session, search, page))
   const selected = typeof value === 'object' ? value : null
-  const options = users.data?.results ?? []
+  const options = users.data?.results ?? emptyUsers
+  const { refetch } = users
 
   useEffect(() => {
     if (users.error instanceof SessionExpiredError)
       onSessionExpired(users.error.message)
   }, [users.error, onSessionExpired])
 
-  function findUsers() {
+  const handleFindUsers = useCallback(() => {
     setSearch(searchInput.current?.value.trim() ?? '')
     setPage(1)
-  }
+  }, [])
+  const handleSelect = useCallback(
+    (event: ChangeEvent<HTMLSelectElement>) => {
+      const id = event.currentTarget.value
+      if (id === 'all') onChange('all')
+      else if (id === 'unassigned') onChange(null)
+      else onChange(options.find((user) => user.id === Number(id)) ?? selected)
+    },
+    [onChange, options, selected],
+  )
+  const handleSearchKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        handleFindUsers()
+      }
+    },
+    [handleFindUsers],
+  )
+  const handleRetry = useCallback(() => {
+    void refetch()
+  }, [refetch])
 
   return (
     <div className="min-w-0 space-y-2">
@@ -50,15 +80,7 @@ export function UserSelect({
         {label}
         <select
           value={selected?.id ?? (value === 'all' ? 'all' : 'unassigned')}
-          onChange={(event) => {
-            const id = event.target.value
-            if (id === 'all') onChange('all')
-            else if (id === 'unassigned') onChange(null)
-            else
-              onChange(
-                options.find((user) => user.id === Number(id)) ?? selected,
-              )
-          }}
+          onChange={handleSelect}
           className="mt-1 min-h-11 w-full rounded border border-gray-300 bg-white px-3 focus:outline-2 focus:outline-blue-600"
         >
           {allowAll ? <option value="all">All assignees</option> : null}
@@ -84,17 +106,12 @@ export function UserSelect({
               aria-label="Search users"
               placeholder="Name or username"
               type="search"
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault()
-                  findUsers()
-                }
-              }}
+              onKeyDown={handleSearchKeyDown}
               className="min-h-11 min-w-0 flex-1 rounded border border-gray-300 bg-white px-3 focus:outline-2 focus:outline-blue-600"
             />
             <button
               type="button"
-              onClick={findUsers}
+              onClick={handleFindUsers}
               className="min-h-11 rounded border border-gray-300 bg-white px-3 hover:bg-gray-100"
             >
               Find
@@ -122,7 +139,7 @@ export function UserSelect({
           <p>{getApiErrorMessage(users.error)}</p>
           <button
             type="button"
-            onClick={() => void users.refetch()}
+            onClick={handleRetry}
             className="min-h-11 underline"
           >
             Retry users

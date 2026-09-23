@@ -1,13 +1,18 @@
 import Cookies from 'js-cookie'
 import axios, { isAxiosError, type AxiosRequestConfig } from 'axios'
 import { queryOptions } from '@tanstack/react-query'
+import { z } from 'zod'
 import type { UserSummary } from './users'
 
 const http = axios.create({ adapter: 'fetch', timeout: 10_000 })
 
 export type Account = UserSummary & { email: string }
 export type Session = { access: string }
-export type Credentials = { username: string; password: string }
+export const credentialsSchema = z.object({
+  username: z.string().trim().min(1, 'Enter your username.'),
+  password: z.string().min(1, 'Enter your password.'),
+})
+export type Credentials = z.infer<typeof credentialsSchema>
 export type SignedInSession = { session: Session; account: Account }
 
 export const sessionQuery = queryOptions({

@@ -31,3 +31,25 @@ test('trims the username but keeps the password unchanged', async () => {
     password: ' secret ',
   })
 })
+
+test('rejects a whitespace username and clears the error after correction', async () => {
+  /** Validates the form before sending credentials. */
+  const user = userEvent.setup()
+  const onSignIn = vi.fn()
+  render(
+    <LoginForm onSignIn={onSignIn} pending={false} error={null} notice="" />,
+  )
+  await user.type(screen.getByLabelText('Username'), '   ')
+  await user.type(screen.getByLabelText('Password'), ' secret ')
+  await user.click(screen.getByRole('button', { name: 'Sign in' }))
+  expect(screen.getByRole('alert')).toHaveTextContent('Enter your username.')
+  expect(onSignIn).not.toHaveBeenCalled()
+  await user.clear(screen.getByLabelText('Username'))
+  await user.type(screen.getByLabelText('Username'), 'ana')
+  await user.click(screen.getByRole('button', { name: 'Sign in' }))
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  expect(onSignIn).toHaveBeenCalledExactlyOnceWith({
+    username: 'ana',
+    password: ' secret ',
+  })
+})

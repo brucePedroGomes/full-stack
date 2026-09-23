@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type SubmitEvent } from 'react'
 import {
   Dialog,
   DialogBackdrop,
@@ -15,6 +15,7 @@ import {
 import {
   createTask,
   deleteTask,
+  taskInputSchema,
   updateTask,
   type Task,
   type TaskInput,
@@ -36,6 +37,7 @@ export function TaskForm({
   onSaved,
   onSessionExpired,
 }: TaskFormProps) {
+  const [validationError, setValidationError] = useState('')
   const [assignee, setAssignee] = useState<UserSelection>(
     task?.assignee ?? null,
   )
@@ -50,19 +52,44 @@ export function TaskForm({
   })
   const busy = save.isPending || remove.isPending
   const error = save.error || remove.error
+  const { mutate: saveTask, reset: resetSave } = save
+  const { mutate: removeTask, reset: resetRemove } = remove
+
+  const handleClose = useCallback(() => {
+    if (!busy) onClose()
+  }, [busy, onClose])
+  const handleSubmit = useCallback(
+    (event: SubmitEvent<HTMLFormElement>) => {
+      event.preventDefault()
+      const result = taskInputSchema.safeParse({
+        ...Object.fromEntries(new FormData(event.currentTarget)),
+        assigned_to:
+          typeof assignee === 'object' ? (assignee?.id ?? null) : null,
+      })
+      if (!result.success) {
+        setValidationError(result.error.issues[0].message)
+        return
+      }
+      setValidationError('')
+      resetRemove()
+      saveTask(result.data)
+    },
+    [assignee, resetRemove, saveTask],
+  )
+  const handleDelete = useCallback(() => {
+    if (task && window.confirm(`Delete "${task.title}"?`)) {
+      setValidationError('')
+      resetSave()
+      removeTask(task.id)
+    }
+  }, [task, resetSave, removeTask])
 
   useEffect(() => {
     if (error instanceof SessionExpiredError) onSessionExpired(error.message)
   }, [error, onSessionExpired])
 
   return (
-    <Dialog
-      open
-      onClose={() => {
-        if (!busy) onClose()
-      }}
-      className="relative z-50"
-    >
+    <Dialog open onClose={handleClose} className="relative z-50">
       <DialogBackdrop className="fixed inset-0 bg-black/30" />
       <div className="fixed inset-0 w-screen overflow-y-auto p-4">
         <div className="flex min-h-full items-center justify-center">
@@ -70,23 +97,7 @@ export function TaskForm({
             <DialogTitle className="text-xl font-semibold">
               {task ? 'Edit task' : 'New task'}
             </DialogTitle>
-            <form
-              className="mt-5 space-y-4"
-              onSubmit={(event) => {
-                event.preventDefault()
-                const data = new FormData(event.currentTarget)
-                remove.reset()
-                save.mutate({
-                  title: String(data.get('title')).trim(),
-                  description: String(data.get('description')).trim(),
-                  due_date: String(data.get('due_date')) || null,
-                  assigned_to:
-                    typeof assignee === 'object'
-                      ? (assignee?.id ?? null)
-                      : null,
-                })
-              }}
-            >
+            <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
               <fieldset
                 disabled={busy}
                 className="min-w-0 space-y-4 disabled:opacity-60"
@@ -129,9 +140,9 @@ export function TaskForm({
                   onSessionExpired={onSessionExpired}
                 />
               </fieldset>
-              {error ? (
+              {validationError || error ? (
                 <p role="alert" className="text-red-700">
-                  {getApiErrorMessage(error)}
+                  {validationError || getApiErrorMessage(error)}
                 </p>
               ) : null}
               <div className="flex flex-wrap justify-end gap-3 border-t border-gray-200 pt-4">
@@ -139,12 +150,7 @@ export function TaskForm({
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={() => {
-                      if (window.confirm(`Delete "${task.title}"?`)) {
-                        save.reset()
-                        remove.mutate(task.id)
-                      }
-                    }}
+                    onClick={handleDelete}
                     className="mr-auto flex min-h-11 items-center gap-2 rounded border border-red-200 px-3 text-red-700 hover:bg-red-50 disabled:opacity-50"
                   >
                     <TrashIcon aria-hidden="true" className="size-5" />
@@ -154,7 +160,7 @@ export function TaskForm({
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={onClose}
+                  onClick={handleClose}
                   className="min-h-11 rounded border border-gray-300 px-4 hover:bg-gray-100 disabled:opacity-50"
                 >
                   Cancel
