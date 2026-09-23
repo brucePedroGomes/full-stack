@@ -1,9 +1,19 @@
 from typing import cast
 
 from django.contrib.auth.models import User
-from rest_framework.generics import RetrieveAPIView
+from rest_framework.filters import SearchFilter
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 
-from .serializers import UserSerializer
+from .pagination import UserPagination
+from .serializers import UserSerializer, UserSummarySerializer
+
+
+class UserListView(ListAPIView[User]):
+    queryset = User.objects.order_by('username')
+    serializer_class = UserSummarySerializer
+    pagination_class = UserPagination
+    filter_backends = [SearchFilter]
+    search_fields = ['first_name', 'last_name', 'username']
 
 
 class UserMeView(RetrieveAPIView[User]):

@@ -12,7 +12,9 @@ from tasks.models import Task
 class TaskCrudTests(APITestCase):
     def setUp(self):
         self.creator = get_user_model().objects.create(username='creator')
-        self.assignee = get_user_model().objects.create(username='assignee')
+        self.assignee = get_user_model().objects.create(
+            username='assignee', first_name='Ana', last_name='Silva'
+        )
         self.client.force_authenticate(user=self.creator)
 
     def test_create_task(self):
@@ -182,3 +184,22 @@ class TaskCrudTests(APITestCase):
             ).status_code,
             400,
         )
+
+    def test_includes_assignee_names_without_extra_queries_per_task(self) -> None:
+        """Keep card names available without loading the user directory."""
+        Task.objects.bulk_create([
+            Task(title=f'Task {index}', created_by=self.creator, assigned_to=self.assignee)
+            for index in range(10)
+        ])
+        with self.assertNumQueries(2):
+            response = self.client.get(reverse('tasks:list'))
+        self.assertEqual(response.data['results'][0]['assignee'], {
+            'id': self.assignee.pk, 'username': 'assignee',
+            'first_name': 'Ana', 'last_name': 'Silva',
+        })
+        detail = self.client.patch(
+            reverse('tasks:detail', args=[response.data['results'][0]['id']]),
+            {'assigned_to': None, 'assignee': {'id': self.creator.pk}}, format='json',
+        )
+        self.assertIsNone(detail.data['assigned_to'])
+        self.assertIsNone(detail.data['assignee'])

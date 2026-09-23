@@ -10,7 +10,7 @@ class TaskFilterForm(forms.Form):
     def clean(self) -> dict[str, object]:
         """Reject blank filters and a date range in reverse order."""
         cleaned_data = super().clean() or {}
-        for name in ('status', 'due_date', 'due_after', 'due_before'):
+        for name in ('status', 'due_date', 'due_after', 'due_before', 'assigned_to'):
             if self.data.get(name) == '':
                 self.add_error(name, 'This field may not be blank.')
 
@@ -26,10 +26,11 @@ class TaskFilterForm(forms.Form):
 
 
 class TaskFilter(filters.FilterSet):
+    unassigned = filters.BooleanFilter(field_name='assigned_to', lookup_expr='isnull')
     due_after = filters.DateFilter(field_name='due_date', lookup_expr='gte')
     due_before = filters.DateFilter(field_name='due_date', lookup_expr='lte')
 
     class Meta:
         model = Task
-        fields = ['status', 'due_date']
+        fields = ['status', 'due_date', 'assigned_to']
         form = TaskFilterForm
