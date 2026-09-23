@@ -1,10 +1,9 @@
 """Django settings loaded from environment variables."""
 
-from pathlib import Path
-
+from config import common_settings
 from config.environment import Env
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = common_settings.BASE_DIR
 env = Env()
 
 
@@ -39,20 +38,7 @@ CSRF_TRUSTED_ORIGINS = env.CSRF_TRUSTED_ORIGINS
 
 # Apps and middleware
 
-INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'django_filters',
-    'rest_framework',
-    'drf_spectacular',
-    'drf_spectacular_sidecar',
-    'users.apps.UsersConfig',
-    'tasks.apps.TasksConfig',
-]
+INSTALLED_APPS = common_settings.INSTALLED_APPS
 
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': [
@@ -173,16 +159,9 @@ USE_TZ = True
 
 # Static files
 
-STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-STORAGES = {
-    'default': {
-        'BACKEND': 'django.core.files.storage.FileSystemStorage',
-    },
-    'staticfiles': {
-        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
-    },
-}
+STATIC_URL = common_settings.STATIC_URL
+STATIC_ROOT = common_settings.STATIC_ROOT
+STORAGES = common_settings.STORAGES
 
 
 if DEBUG:

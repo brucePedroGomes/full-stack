@@ -1,9 +1,7 @@
 # syntax=docker/dockerfile:1
-# Tags are readable but can change. Use --pull for updates.
 FROM python:3.14-slim-trixie AS base
 
 FROM base AS builder
-# Change this tag to upgrade uv; rebuild and test.
 COPY --from=ghcr.io/astral-sh/uv:0.12.17 /uv /usr/local/bin/uv
 
 RUN apt-get update \
@@ -19,9 +17,11 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev --no-install-project
+COPY . .
+RUN DJANGO_SETTINGS_MODULE=config.common_settings \
+    /opt/venv/bin/python manage.py collectstatic --noinput
 
 FROM base AS runtime
-# No runtime pip: fewer tools, but packages must be installed at build time.
 RUN python -m pip uninstall --yes pip \
     && apt-get update \
     && apt-get install -y --no-install-recommends libpq5 ca-certificates \
@@ -37,6 +37,7 @@ ENV PATH="/opt/venv/bin:$PATH" \
 WORKDIR /app
 COPY --from=builder /opt/venv /opt/venv
 COPY . .
+COPY --from=builder /app/staticfiles ./staticfiles
 
 USER 10001:10001
 EXPOSE 8000
