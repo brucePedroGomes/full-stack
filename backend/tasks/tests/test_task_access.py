@@ -43,18 +43,17 @@ class TaskAccessTests(APITestCase):
         self.assertEqual(task.assigned_to, self.teammate)
         self.assertEqual(task.created_by, self.creator)
 
-    def test_teammate_can_complete_task(self):
+    def test_teammate_can_change_task_status(self):
         task = Task.objects.create(title='Draft', created_by=self.creator)
-        complete_url = reverse('tasks:complete', args=[task.pk])
+        status_url = reverse('tasks:status', args=[task.pk])
 
-        self.assertEqual(self.client.post(complete_url).status_code, 200)
-        task.refresh_from_db()
-        self.assertEqual(task.status, Task.Status.COMPLETED)
-        updated_at = task.updated_at
+        response = self.client.patch(
+            status_url, {'status': 'in_progress'}, format='json'
+        )
 
-        self.assertEqual(self.client.post(complete_url).status_code, 200)
+        self.assertEqual(response.status_code, 200)
         task.refresh_from_db()
-        self.assertEqual(task.updated_at, updated_at)
+        self.assertEqual(task.status, Task.Status.IN_PROGRESS)
 
     def test_teammate_can_delete_task(self):
         task = Task.objects.create(title='Draft', created_by=self.creator)
@@ -83,6 +82,9 @@ class TaskAccessTests(APITestCase):
         )
         self.assertEqual(self.client.delete(detail_url).status_code, 401)
         self.assertEqual(
-            self.client.post(reverse('tasks:complete', args=[task.pk])).status_code,
+            self.client.patch(
+                reverse('tasks:status', args=[task.pk]),
+                {'status': 'done'}, format='json',
+            ).status_code,
             401,
         )

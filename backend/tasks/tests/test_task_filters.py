@@ -16,23 +16,23 @@ class TaskFilterTests(APITestCase):
 
     def test_filters_by_status_and_due_date_range(self):
         Task.objects.create(
-            title='Pending', created_by=self.user, due_date=date(2026, 10, 10)
+            title='Planned', created_by=self.user, due_date=date(2026, 10, 10)
         )
         Task.objects.create(
-            title='Completed', created_by=self.user,
-            due_date=date(2026, 10, 11), status=Task.Status.COMPLETED,
+            title='To Do', created_by=self.user,
+            due_date=date(2026, 10, 11), status=Task.Status.TO_DO,
         )
         Task.objects.create(title='No deadline', created_by=self.user)
 
         response = self.client.get(reverse('tasks:list'), {
-            'status': 'completed',
+            'status': 'to_do',
             'due_after': '2026-10-11',
             'due_before': '2026-10-11',
         })
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
-            [task['title'] for task in response.data['results']], ['Completed']
+            [task['title'] for task in response.data['results']], ['To Do']
         )
 
     def test_filters_by_exact_due_date(self):
@@ -55,10 +55,19 @@ class TaskFilterTests(APITestCase):
         url = reverse('tasks:list')
         invalid_filters = (
             {'status': 'unknown'},
+            {'status': ''},
             {'due_date': 'tomorrow'},
+            {'due_date': ''},
+            {'due_after': ''},
+            {'due_before': ''},
             {'due_after': '2026-10-12', 'due_before': '2026-10-11'},
         )
 
         for filters in invalid_filters:
             with self.subTest(filters=filters):
                 self.assertEqual(self.client.get(url, filters).status_code, 400)
+
+        response = self.client.get(url, {
+            'due_after': '2026-10-12', 'due_before': '2026-10-11',
+        })
+        self.assertIn('due_after', response.data)

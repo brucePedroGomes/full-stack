@@ -29,10 +29,10 @@ class TaskPaginationTests(APITestCase):
 
     def test_next_page_keeps_filters(self):
         for title, task_status, due_date in (
-            ('First', Task.Status.COMPLETED, date(2026, 10, 10)),
-            ('Second', Task.Status.COMPLETED, date(2026, 10, 11)),
-            ('Pending', Task.Status.PENDING, date(2026, 10, 10)),
-            ('Too late', Task.Status.COMPLETED, date(2026, 10, 12)),
+            ('First', Task.Status.DONE, date(2026, 10, 10)),
+            ('Second', Task.Status.DONE, date(2026, 10, 11)),
+            ('Planned', Task.Status.PLANNED, date(2026, 10, 10)),
+            ('Too late', Task.Status.DONE, date(2026, 10, 12)),
         ):
             Task.objects.create(
                 title=title, created_by=self.user,
@@ -40,7 +40,7 @@ class TaskPaginationTests(APITestCase):
             )
 
         first_page = self.client.get(reverse('tasks:list'), {
-            'status': 'completed', 'due_before': '2026-10-11', 'page_size': 1,
+            'status': 'done', 'due_before': '2026-10-11', 'page_size': 1,
         }).data
         second_page = self.client.get(first_page['next']).data
 
