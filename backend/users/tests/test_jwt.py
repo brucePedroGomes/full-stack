@@ -12,6 +12,7 @@ class JWTAuthenticationTests(APITestCase):
         )
 
     def test_access_token_authenticates_api_and_refresh_renews_it(self):
+        """Use JWT access and refresh tokens for protected routes."""
         response = self.client.post(
             reverse('token-obtain'),
             {'username': 'ana', 'password': 'example-password'},
@@ -42,6 +43,7 @@ class JWTAuthenticationTests(APITestCase):
         self.assertEqual(self.client.get(reverse('tasks:list')).data['count'], 1)
 
     def test_bad_credentials_and_invalid_token_are_rejected(self):
+        """Reject bad passwords and invalid access tokens."""
         response = self.client.post(
             reverse('token-obtain'),
             {'username': 'ana', 'password': 'wrong-password'},
@@ -53,5 +55,6 @@ class JWTAuthenticationTests(APITestCase):
         self.assertEqual(self.client.get(reverse('users:me')).status_code, 401)
 
     def test_session_login_does_not_authenticate_api(self):
+        """Require JWT even when a Django session is active."""
         self.client.force_login(self.user)
         self.assertEqual(self.client.get(reverse('users:me')).status_code, 401)

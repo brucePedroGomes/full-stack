@@ -15,6 +15,7 @@ class TaskPaginationTests(APITestCase):
         self.client.force_authenticate(user=self.user)
 
     def test_lists_twenty_tasks_per_page_by_default(self):
+        """Return twenty tasks on the first page."""
         Task.objects.bulk_create([
             Task(title=f'Task {number}', created_by=self.user)
             for number in range(21)
@@ -28,6 +29,7 @@ class TaskPaginationTests(APITestCase):
         self.assertEqual(len(second_page['results']), 1)
 
     def test_next_page_keeps_filters(self):
+        """Keep filters when following the next page link."""
         for title, task_status, due_date in (
             ('First', Task.Status.DONE, date(2026, 10, 10)),
             ('Second', Task.Status.DONE, date(2026, 10, 11)),

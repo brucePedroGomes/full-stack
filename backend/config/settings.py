@@ -15,6 +15,7 @@ SECRET_KEY = env.SECRET_KEY
 
 # Debug helps locally but exposes details in production.
 DEBUG = env.DEBUG
+ENABLE_API_DOCS = env.ENABLE_API_DOCS
 
 ALLOWED_HOSTS = env.ALLOWED_HOSTS
 
@@ -54,6 +55,9 @@ INSTALLED_APPS = [
 ]
 
 REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
@@ -62,6 +66,11 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
+
+if DEBUG:
+    REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'].append(
+        'rest_framework.renderers.BrowsableAPIRenderer'
+    )
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Challenge API',
@@ -81,6 +90,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+if not DEBUG:
+    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
 
 ROOT_URLCONF = 'config.urls'
 
@@ -162,12 +174,31 @@ USE_TZ = True
 # Static files
 
 STATIC_URL = 'static/'
-
-
-# Print email locally; this does not send messages.
-
-MAILERS = {
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STORAGES = {
     'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
     },
 }
+
+
+if DEBUG:
+    default_mailer = {'BACKEND': 'django.core.mail.backends.console.EmailBackend'}
+else:
+    default_mailer = {
+        'BACKEND': 'django.core.mail.backends.smtp.EmailBackend',
+        'OPTIONS': {
+            'host': env.EMAIL_HOST,
+            'port': env.EMAIL_PORT,
+            'username': env.EMAIL_USERNAME,
+            'password': env.EMAIL_PASSWORD,
+            'use_tls': env.EMAIL_USE_TLS,
+        },
+    }
+
+MAILERS = {'default': default_mailer}
+DEFAULT_FROM_EMAIL = env.EMAIL_FROM
+SERVER_EMAIL = env.EMAIL_FROM

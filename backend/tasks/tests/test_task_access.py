@@ -14,6 +14,7 @@ class TaskAccessTests(APITestCase):
         self.client.force_authenticate(user=self.teammate)
 
     def test_teammate_can_list_and_read_all_tasks(self):
+        """Allow any team member to list and read tasks."""
         first = Task.objects.create(title='Assigned', created_by=self.creator)
         second = Task.objects.create(title='Unassigned', created_by=self.creator)
 
@@ -29,6 +30,7 @@ class TaskAccessTests(APITestCase):
         )
 
     def test_teammate_can_edit_and_assign_task(self):
+        """Allow a team member to edit and assign another user's task."""
         task = Task.objects.create(title='Draft', created_by=self.creator)
 
         response = self.client.patch(
@@ -44,6 +46,7 @@ class TaskAccessTests(APITestCase):
         self.assertEqual(task.created_by, self.creator)
 
     def test_teammate_can_change_task_status(self):
+        """Allow a team member to change task status."""
         task = Task.objects.create(title='Draft', created_by=self.creator)
         status_url = reverse('tasks:status', args=[task.pk])
 
@@ -56,6 +59,7 @@ class TaskAccessTests(APITestCase):
         self.assertEqual(task.status, Task.Status.IN_PROGRESS)
 
     def test_teammate_can_delete_task(self):
+        """Allow a team member to delete another user's task."""
         task = Task.objects.create(title='Draft', created_by=self.creator)
 
         response = self.client.delete(reverse('tasks:detail', args=[task.pk]))
@@ -64,6 +68,7 @@ class TaskAccessTests(APITestCase):
         self.assertFalse(Task.objects.filter(pk=task.pk).exists())
 
     def test_anonymous_user_cannot_access_tasks(self):
+        """Require a token for every task action."""
         task = Task.objects.create(title='Draft', created_by=self.creator)
         detail_url = reverse('tasks:detail', args=[task.pk])
         self.client.force_authenticate(user=None)

@@ -34,6 +34,7 @@ class Env:
                 '8 times DJANGO_ARGON2_PARALLELISM (in KiB).'
             )
         self.DEBUG = self._bool('DJANGO_DEBUG')
+        self.ENABLE_API_DOCS = self._bool('DJANGO_ENABLE_API_DOCS', default=self.DEBUG)
         self.ALLOWED_HOSTS = self._list('DJANGO_ALLOWED_HOSTS')
         self.SESSION_COOKIE_SECURE = self._bool(
             'DJANGO_SESSION_COOKIE_SECURE', default=not self.DEBUG
@@ -51,6 +52,18 @@ class Env:
         )
         self.SECURE_HSTS_PRELOAD = self._bool('DJANGO_SECURE_HSTS_PRELOAD')
         self.CSRF_TRUSTED_ORIGINS = self._list('DJANGO_CSRF_TRUSTED_ORIGINS')
+        self.EMAIL_HOST = (
+            self._values.get('DJANGO_EMAIL_HOST', '')
+            if self.DEBUG else self._required('DJANGO_EMAIL_HOST')
+        )
+        self.EMAIL_FROM = (
+            self._values.get('DJANGO_EMAIL_FROM', 'webmaster@localhost')
+            if self.DEBUG else self._required('DJANGO_EMAIL_FROM')
+        )
+        self.EMAIL_PORT = self._int('DJANGO_EMAIL_PORT', 587)
+        self.EMAIL_USERNAME = self._values.get('DJANGO_EMAIL_USERNAME', '')
+        self.EMAIL_PASSWORD = self._values.get('DJANGO_EMAIL_PASSWORD', '')
+        self.EMAIL_USE_TLS = self._bool('DJANGO_EMAIL_USE_TLS', default=True)
 
         self.DB_NAME = self._required('DB_NAME')
         self.DB_USER = self._required('DB_USER')
@@ -62,6 +75,12 @@ class Env:
 
         if not 1 <= self.DB_PORT <= 65535:
             raise ImproperlyConfigured('DB_PORT must be between 1 and 65535.')
+        if not 1 <= self.EMAIL_PORT <= 65535:
+            raise ImproperlyConfigured('DJANGO_EMAIL_PORT must be between 1 and 65535.')
+        if bool(self.EMAIL_USERNAME) != bool(self.EMAIL_PASSWORD):
+            raise ImproperlyConfigured(
+                'DJANGO_EMAIL_USERNAME and DJANGO_EMAIL_PASSWORD must be set together.'
+            )
         if self.SECURE_HSTS_SECONDS < 0:
             raise ImproperlyConfigured('DJANGO_SECURE_HSTS_SECONDS cannot be negative.')
 

@@ -16,6 +16,7 @@ class TaskCrudTests(APITestCase):
         self.client.force_authenticate(user=self.creator)
 
     def test_create_task(self):
+        """Create a planned task for the current user."""
         response = self.client.post(
             reverse('tasks:list'),
             {
@@ -34,6 +35,7 @@ class TaskCrudTests(APITestCase):
         self.assertEqual(task.status, Task.Status.PLANNED)
 
     def test_read_task(self):
+        """Return a task by its ID."""
         task = Task.objects.create(title='Write report', created_by=self.creator)
 
         response = self.client.get(reverse('tasks:detail', args=[task.pk]))
@@ -42,6 +44,7 @@ class TaskCrudTests(APITestCase):
         self.assertEqual(response.data['title'], 'Write report')
 
     def test_put_updates_task(self):
+        """Replace editable task fields with PUT."""
         task = Task.objects.create(title='Draft', created_by=self.creator)
 
         response = self.client.put(
@@ -61,6 +64,7 @@ class TaskCrudTests(APITestCase):
         self.assertEqual(task.assigned_to, self.assignee)
 
     def test_status_route_accepts_all_statuses(self):
+        """Accept each defined task status."""
         task = Task.objects.create(title='Draft', created_by=self.creator)
         url = reverse('tasks:status', args=[task.pk])
 
@@ -73,6 +77,7 @@ class TaskCrudTests(APITestCase):
                 self.assertEqual(task.status, status)
 
     def test_regular_task_route_cannot_change_status(self):
+        """Keep status changes on the status route."""
         task = Task.objects.create(title='Draft', created_by=self.creator)
 
         response = self.client.patch(
@@ -87,6 +92,7 @@ class TaskCrudTests(APITestCase):
         self.assertEqual(task.status, Task.Status.PLANNED)
 
     def test_status_route_changes_only_status(self):
+        """Ignore other fields when changing status."""
         task = Task.objects.create(title='Draft', created_by=self.creator)
         url = reverse('tasks:status', args=[task.pk])
 
@@ -101,6 +107,7 @@ class TaskCrudTests(APITestCase):
         self.assertEqual(self.client.put(url, {'status': 'done'}).status_code, 405)
 
     def test_status_route_rejects_invalid_status(self):
+        """Reject missing and unknown task statuses."""
         task = Task.objects.create(title='Draft', created_by=self.creator)
         url = reverse('tasks:status', args=[task.pk])
 
@@ -118,6 +125,7 @@ class TaskCrudTests(APITestCase):
         self.assertEqual(task.status, Task.Status.PLANNED)
 
     def test_patch_clears_assignee(self):
+        """Allow a task's assignee to be removed."""
         task = Task.objects.create(
             title='Draft', created_by=self.creator, assigned_to=self.assignee
         )
@@ -133,6 +141,7 @@ class TaskCrudTests(APITestCase):
         self.assertIsNone(task.assigned_to)
 
     def test_delete_task(self):
+        """Delete a task by its ID."""
         task = Task.objects.create(title='Draft', created_by=self.creator)
 
         response = self.client.delete(reverse('tasks:detail', args=[task.pk]))
@@ -141,6 +150,7 @@ class TaskCrudTests(APITestCase):
         self.assertFalse(Task.objects.filter(pk=task.pk).exists())
 
     def test_rejects_invalid_task_data(self):
+        """Reject a blank title and an unknown assignee."""
         url = reverse('tasks:list')
 
         self.assertEqual(

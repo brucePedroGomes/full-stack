@@ -15,6 +15,7 @@ class TaskFilterTests(APITestCase):
         self.client.force_authenticate(user=self.user)
 
     def test_filters_by_status_and_due_date_range(self):
+        """Combine status and inclusive due date filters."""
         Task.objects.create(
             title='Planned', created_by=self.user, due_date=date(2026, 10, 10)
         )
@@ -36,6 +37,7 @@ class TaskFilterTests(APITestCase):
         )
 
     def test_filters_by_exact_due_date(self):
+        """Match tasks due on one date."""
         Task.objects.create(
             title='Today', created_by=self.user, due_date=date(2026, 10, 10)
         )
@@ -52,6 +54,7 @@ class TaskFilterTests(APITestCase):
         )
 
     def test_rejects_invalid_filters(self):
+        """Reject invalid or blank task filters."""
         url = reverse('tasks:list')
         invalid_filters = (
             {'status': 'unknown'},

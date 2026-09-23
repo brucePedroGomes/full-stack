@@ -1,4 +1,5 @@
 .venv
+staticfiles
 .git
 .env
 .env.*
