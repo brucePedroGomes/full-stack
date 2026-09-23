@@ -32,7 +32,7 @@ test('sends filters to the server and resets pagination', async ({
   const count = workspace.taskRequests.length
   await page.getByRole('button', { name: 'Apply filters' }).click()
   await expect(
-    page.getByRole('list', { name: 'Tasks' }).getByRole('heading'),
+    page.getByRole('region', { name: 'Task board' }).getByRole('heading', { level: 3 }),
   ).toHaveText(['Find this report'])
   expect(workspace.taskRequests).toHaveLength(count + 1)
   expect(
@@ -50,7 +50,7 @@ test('sends filters to the server and resets pagination', async ({
   await expect(page.getByLabel('Filter by due date')).toHaveValue('')
   await expect(page.getByLabel('Filter by assignee')).toHaveValue('all')
   await expect(
-    page.getByRole('list', { name: 'Tasks' }).getByRole('heading'),
+    page.getByRole('region', { name: 'Task board' }).getByRole('heading', { level: 3 }),
   ).toHaveCount(PAGE_SIZE)
 })
 

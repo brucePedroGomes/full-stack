@@ -1,12 +1,12 @@
 import { PAGE_SIZE } from '@/config'
-import { makeUser } from '../support/fixtures'
+import { makeTask, makeUser } from '../support/fixtures'
 import { expect, test } from './support/workspace'
 
-test('pages and searches users inside the task dialog', async ({
+test('selects users from every page with a normal dropdown', async ({
   page,
   workspace,
 }) => {
-  /** Keeps the selected user when search results change. */
+  /** Makes later users available in both assignment and filtering. */
   const users = Array.from({ length: PAGE_SIZE + 1 }, (_, i) =>
     makeUser({
       id: i + 1,
@@ -16,48 +16,55 @@ test('pages and searches users inside the task dialog', async ({
     }),
   )
   await workspace.open({ users })
+  const lastUser = String(PAGE_SIZE + 1)
+  await expect(page.getByLabel('Filter by assignee')).toContainText(
+    `Person ${lastUser}`,
+  )
+  expect(workspace.userRequests.map((url) => url.searchParams.get('page'))).toEqual([
+    '1',
+    '2',
+  ])
+  await expect(page.getByText('Find a user', { exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: 'New task', exact: true }).click()
   const dialog = page.getByRole('dialog')
-  await dialog.getByText('Find a user', { exact: true }).click()
-  const pages = dialog.getByRole('navigation', { name: 'User pages' })
-  await pages.getByRole('button', { name: 'Next' }).click()
-  await expect(dialog.getByLabel('Assigned to')).toContainText(
-    `Person ${PAGE_SIZE + 1}`,
-  )
-  await dialog.getByLabel('Assigned to').selectOption(String(PAGE_SIZE + 1))
-  await dialog.getByLabel('Search users').fill('user000')
-  await dialog.getByRole('button', { name: 'Find', exact: true }).click()
-  await expect(pages).toContainText('Page 1')
-  await expect(dialog.getByLabel('Assigned to')).toContainText('Person 1')
-  await expect(dialog.getByLabel('Assigned to')).toHaveValue(
-    String(PAGE_SIZE + 1),
-  )
-  expect(workspace.userRequests.at(-1)?.searchParams.get('search')).toBe(
-    'user000',
-  )
+  await expect(dialog.getByLabel('Search users')).toHaveCount(0)
+  await expect(dialog.getByRole('navigation', { name: 'User pages' })).toHaveCount(0)
+  await dialog.getByLabel('Assigned to').selectOption(lastUser)
   await dialog.getByLabel('Title', { exact: true }).fill('Assigned task')
   await dialog.getByRole('button', { name: 'Save task' }).click()
-  await expect(page.getByRole('list', { name: 'Tasks' })).toContainText(
-    `Person ${PAGE_SIZE + 1}`,
+  await expect(page.getByRole('region', { name: 'Task board' })).toContainText(
+    `Person ${lastUser}`,
   )
+  await page.getByLabel('Filter by assignee').selectOption(lastUser)
+  await page.getByRole('button', { name: 'Apply filters' }).click()
+  await expect(
+    page.getByRole('region', { name: 'Task board' }).getByRole('heading', { level: 3 }),
+  ).toHaveText(['Assigned task'])
+  expect(workspace.userRequests).toHaveLength(2)
+  await page.reload()
+  await page.getByRole('button', { name: 'Edit Assigned task' }).click()
+  await expect(dialog.getByLabel('Assigned to')).toHaveValue(lastUser)
 })
 
-test('can retry a failed user search', async ({ page, workspace }) => {
-  /** Recovers the user field without closing the task form. */
-  await workspace.open()
-  await page.getByRole('button', { name: 'New task', exact: true }).click()
-  const dialog = page.getByRole('dialog')
-  const search = (url: URL) =>
-    url.pathname === '/api/users/' && url.searchParams.get('search') === 'Bruno'
-  await page.route(search, (route) =>
-    route.fulfill({ status: 400, json: { detail: 'User search failed.' } }),
+test('retries loading users and keeps the current assignee', async ({
+  page,
+  workspace,
+}) => {
+  /** Recovers the dropdown without clearing an existing assignment. */
+  await workspace.open({ tasks: [makeTask({ assigned_to: 2 })] })
+  const userList = (url: URL) => url.pathname === '/api/users/'
+  await page.route(userList, (route) =>
+    route.fulfill({ status: 400, json: { detail: 'Could not load users.' } }),
   )
-  await dialog.getByText('Find a user', { exact: true }).click()
-  await dialog.getByLabel('Search users').fill('Bruno')
-  await dialog.getByLabel('Search users').press('Enter')
-  await expect(dialog.getByRole('alert')).toContainText('User search failed.')
-  await page.unroute(search)
-  await dialog.getByRole('button', { name: 'Retry users' }).click()
+  await page.reload()
+  await page.getByRole('button', { name: 'Edit Prepare report' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('alert')).toContainText('Could not load users.')
+  await expect(dialog.getByLabel('Assigned to')).toHaveValue('2')
   await expect(dialog.getByLabel('Assigned to')).toContainText('Bruno Costa')
-  await expect(dialog.getByRole('heading', { name: 'New task' })).toBeVisible()
+  await page.unroute(userList)
+  await dialog.getByRole('button', { name: 'Retry users' }).click()
+  await expect(dialog.getByLabel('Assigned to')).toContainText('Ana Silva')
+  await expect(dialog.getByLabel('Assigned to')).toHaveValue('2')
+  await expect(dialog.getByRole('alert')).toHaveCount(0)
 })

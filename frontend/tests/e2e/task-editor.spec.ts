@@ -45,7 +45,7 @@ test('creates, edits, and deletes a task', async ({ page, workspace }) => {
   await expect(dialog).toHaveCount(0)
   await page.reload()
   await expect(page.getByRole('heading', { name: 'Write notes' })).toBeVisible()
-  await expect(page.getByRole('list', { name: 'Tasks' })).toContainText(
+  await expect(page.getByRole('region', { name: 'Task board' })).toContainText(
     'Bruno Costa · Due 2026-11-12',
   )
   await page.getByRole('button', { name: 'Edit Write notes' }).click()
@@ -57,7 +57,7 @@ test('creates, edits, and deletes a task', async ({ page, workspace }) => {
   await expect(
     page.getByRole('heading', { name: 'Updated notes' }),
   ).toBeVisible()
-  await expect(page.getByRole('list', { name: 'Tasks' })).toContainText(
+  await expect(page.getByRole('region', { name: 'Task board' })).toContainText(
     'Unassigned · No due date',
   )
   await page.getByRole('button', { name: 'Edit Updated notes' }).click()
@@ -107,6 +107,9 @@ test('saves a status change and keeps the saved status after a failure', async (
   await status.selectOption('done')
   await expect(status).toBeEnabled()
   await expect(status).toHaveValue('done')
+  await expect(
+    page.getByRole('region', { name: 'Done', exact: true }).getByRole('heading', { level: 3 }),
+  ).toHaveText('Prepare report')
   await page.reload()
   await expect(status).toHaveValue('done')
   await page.route('**/api/tasks/4/status/', (route) =>
@@ -115,4 +118,7 @@ test('saves a status change and keeps the saved status after a failure', async (
   await status.selectOption('blocked')
   await expect(page.getByRole('alert')).toContainText('Please try again.')
   await expect(status).toHaveValue('done')
+  await expect(
+    page.getByRole('region', { name: 'Blocked', exact: true }).getByRole('heading', { level: 3 }),
+  ).toHaveCount(0)
 })

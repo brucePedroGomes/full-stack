@@ -65,10 +65,10 @@ test('returns to login when the session expires during a status change', async (
   await expect(page.getByRole('status')).toHaveText(
     'Your session has expired. Please sign in again.',
   )
-  await expect(page.getByRole('list', { name: 'Tasks' })).toHaveCount(0)
+  await expect(page.getByRole('region', { name: 'Task board' })).toHaveCount(0)
 })
 
-test('returns to login when the session expires during user search', async ({
+test('returns to login when the session expires while loading users', async ({
   page,
   workspace,
 }) => {
@@ -76,14 +76,18 @@ test('returns to login when the session expires during user search', async ({
   await workspace.open()
   await page.route(
     (url) => url.pathname === '/api/users/',
+    (route) => route.fulfill({ status: 500 }),
+  )
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Retry users' })).toBeVisible()
+  await page.route(
+    (url) => url.pathname === '/api/users/',
     (route) => route.fulfill({ status: 401 }),
   )
   await page.route('**/api/auth/browser/token/', (route) =>
     route.fulfill({ status: 401 }),
   )
-  await page.getByText('Find a user', { exact: true }).click()
-  await page.getByLabel('Search users').fill('Bruno')
-  await page.getByRole('button', { name: 'Find', exact: true }).click()
+  await page.getByRole('button', { name: 'Retry users' }).click()
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
   await expect(page.getByRole('status')).toHaveText(
     'Your session has expired. Please sign in again.',

@@ -17,7 +17,7 @@ import {
 import { Pagination } from './Pagination'
 import { TaskFilters } from './TaskFilters'
 import { TaskForm } from './TaskForm'
-import { TaskRow } from './TaskRow'
+import { TaskBoard } from './TaskBoard'
 
 type TaskPageProps = SignedInSession & {
   onSessionExpired: (message: string) => void
@@ -76,7 +76,7 @@ export function TaskPage({
   )
 
   return (
-    <main className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6">
+    <main className="mx-auto max-w-[100rem] space-y-6 px-4 py-6 sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">Tasks</h1>
         <button
@@ -104,25 +104,21 @@ export function TaskPage({
       ) : null}
       {tasks.data ? (
         <>
-          <p className="text-sm text-gray-600">Tasks: {tasks.data.count}</p>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-gray-600">
+            <p role="status">
+              Showing {tasks.data.results.length} of {tasks.data.count} tasks
+            </p>
+            <p>Columns show tasks on this page.</p>
+          </div>
           {tasks.data.results.length === 0 ? (
             <p>No tasks found.</p>
-          ) : (
-            <ul
-              aria-label="Tasks"
-              className="divide-y divide-gray-200 rounded border border-gray-200 bg-white"
-            >
-              {tasks.data.results.map((task) => (
-                <TaskRow
-                  key={task.id}
-                  task={task}
-                  busy={status.isPending}
-                  onStatusChange={handleStatusChange}
-                  onEdit={handleEditTask}
-                />
-              ))}
-            </ul>
-          )}
+          ) : null}
+          <TaskBoard
+            tasks={tasks.data.results}
+            busy={status.isPending}
+            onStatusChange={handleStatusChange}
+            onEdit={handleEditTask}
+          />
         </>
       ) : null}
       <Pagination

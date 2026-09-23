@@ -1,3 +1,4 @@
+import { taskStatuses } from '@/api/tasks'
 import { makeTask } from '../support/fixtures'
 import { expect, test } from './support/workspace'
 
@@ -7,19 +8,25 @@ test('fits a narrow screen and scrolls the dialog to its actions', async ({
 }, testInfo) => {
   /** Checks layout and real scrolling at a small viewport. */
   await page.setViewportSize({ width: 375, height: 667 })
-  await workspace.open({ tasks: [makeTask({ title: 'A'.repeat(200) })] })
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
+  await workspace.open({
+    tasks: taskStatuses.map((status, index) =>
+      makeTask({ id: index + 1, status: status.value, title: 'A'.repeat(200) }),
     ),
-  ).toBe(true)
+  })
+  for (const width of [320, 768, 375]) {
+    await page.setViewportSize({ width, height: 667 })
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true)
+  }
   await page.screenshot({
-    path: testInfo.outputPath('mobile-list.png'),
+    path: testInfo.outputPath('mobile-board.png'),
     fullPage: true,
   })
   await page.getByRole('button', { name: 'New task', exact: true }).click()
   const dialog = page.getByRole('dialog')
-  await dialog.getByText('Find a user', { exact: true }).click()
   await dialog.getByLabel('Title', { exact: true }).fill('Mobile task')
   await dialog
     .getByRole('button', { name: 'Save task' })

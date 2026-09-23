@@ -9,7 +9,7 @@ test('requests one page at a time and displays the server order', async ({
   /** Loads more tasks only when the user changes the page. */
   await workspace.open({ tasks: makeTasks(PAGE_SIZE + 1) })
   const pages = page.getByRole('navigation', { name: 'Task pages' })
-  const titles = page.getByRole('list', { name: 'Tasks' }).getByRole('heading')
+  const titles = page.getByRole('region', { name: 'Task board' }).getByRole('heading', { level: 3 })
   await expect(titles).toHaveCount(PAGE_SIZE)
   await expect(titles.first()).toHaveText(`Task ${PAGE_SIZE + 1}`)
   expect(workspace.taskRequests).toHaveLength(1)
@@ -65,6 +65,6 @@ test('returns to page one after deleting the last task on a page', async ({
     .click()
   await expect(pages).toContainText('Page 1')
   await expect(
-    page.getByRole('list', { name: 'Tasks' }).getByRole('heading'),
+    page.getByRole('region', { name: 'Task board' }).getByRole('heading', { level: 3 }),
   ).toHaveCount(PAGE_SIZE)
 })
