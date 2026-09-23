@@ -24,7 +24,7 @@ class UserMeViewTests(APISimpleTestCase):
     def test_rejects_logged_out_requests(self):
         """Require login before returning account details."""
         response = self.client.get(reverse('users:me'))
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 401)
 
     def test_rejects_profile_changes(self):
         """This endpoint reads account details; it does not edit them."""
