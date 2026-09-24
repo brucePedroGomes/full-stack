@@ -8,7 +8,7 @@ test('select returns typed values and connects its label and description', async
   /** A replacement library must preserve numeric IDs and accessible field text. */
   const user = userEvent.setup()
   const onChange = vi.fn()
-  const ref = createRef<HTMLSelectElement>()
+  const ref = createRef<HTMLButtonElement>()
   render(
     <Select<number | 'unassigned'>
       ref={ref}
@@ -22,10 +22,11 @@ test('select returns typed values and connects its label and description', async
       ]}
     />,
   )
-  const select = screen.getByRole('combobox', { name: 'Assignee' })
+  const select = screen.getByRole('button', { name: /Assignee/ })
   expect(select).toHaveAccessibleDescription('Choose the task owner.')
   expect(ref.current).toBe(select)
-  await user.selectOptions(select, '2')
+  await user.click(select)
+  await user.click(screen.getByRole('option', { name: 'Bruno' }))
   expect(onChange).toHaveBeenCalledExactlyOnceWith(2)
 })
 

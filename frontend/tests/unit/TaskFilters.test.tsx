@@ -39,6 +39,11 @@ function openFilters() {
   }
 }
 
+function chooseOption(label: string, option: string) {
+  fireEvent.click(screen.getByLabelText(label))
+  fireEvent.click(screen.getByRole('option', { name: option }))
+}
+
 beforeEach(() => vi.useFakeTimers())
 afterEach(() => vi.useRealTimers())
 
@@ -64,9 +69,7 @@ test('applies selections immediately and keeps them when search finishes', () =>
   fireEvent.change(screen.getByLabelText('Search tasks'), {
     target: { value: 'report' },
   })
-  fireEvent.change(screen.getByLabelText('Filter by status'), {
-    target: { value: 'done' },
-  })
+  chooseOption('Filter by status', 'Done')
   expect(onApply).toHaveBeenLastCalledWith({ ...defaultFilters, status: 'done' })
   fireEvent.change(screen.getByLabelText('Filter by due date'), {
     target: { value: '2026-10-10' },
@@ -76,9 +79,7 @@ test('applies selections immediately and keeps them when search finishes', () =>
     status: 'done',
     due_date: '2026-10-10',
   })
-  fireEvent.change(screen.getByLabelText('Filter by assignee'), {
-    target: { value: '2' },
-  })
+  chooseOption('Filter by assignee', 'Bruno Costa')
   expect(onApply).toHaveBeenLastCalledWith({
     ...defaultFilters,
     status: 'done',
@@ -97,15 +98,11 @@ test('applies selections immediately and keeps them when search finishes', () =>
 test('reset clears all controls and cancels a pending search', () => {
   /** Waiting after Reset must not bring back the previous search. */
   const { onApply } = openFilters()
-  fireEvent.change(screen.getByLabelText('Filter by status'), {
-    target: { value: 'blocked' },
-  })
+  chooseOption('Filter by status', 'Blocked')
   fireEvent.change(screen.getByLabelText('Filter by due date'), {
     target: { value: '2026-10-10' },
   })
-  fireEvent.change(screen.getByLabelText('Filter by assignee'), {
-    target: { value: '2' },
-  })
+  chooseOption('Filter by assignee', 'Bruno Costa')
   fireEvent.change(screen.getByLabelText('Search tasks'), {
     target: { value: 'old search' },
   })
@@ -113,9 +110,9 @@ test('reset clears all controls and cancels a pending search', () => {
   onApply.mockClear()
   fireEvent.click(screen.getByRole('button', { name: 'Reset' }))
   expect(screen.getByLabelText('Search tasks')).toHaveValue('')
-  expect(screen.getByLabelText('Filter by status')).toHaveValue('all')
+  expect(screen.getByLabelText('Filter by status')).toHaveTextContent('All statuses')
   expect(screen.getByLabelText('Filter by due date')).toHaveValue('')
-  expect(screen.getByLabelText('Filter by assignee')).toHaveValue('all')
+  expect(screen.getByLabelText('Filter by assignee')).toHaveTextContent('All assignees')
   act(() => vi.advanceTimersByTime(300))
   expect(onApply).toHaveBeenCalledExactlyOnceWith(defaultFilters)
 })

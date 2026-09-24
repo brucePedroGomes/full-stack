@@ -1,3 +1,4 @@
+import { chooseOption } from './support/select'
 import { taskStatuses } from '@/api/tasks'
 import { makeTask } from '../support/fixtures'
 import { expect, test } from './support/workspace'
@@ -21,7 +22,7 @@ test('groups tasks by status and keeps all columns when filtered', async ({
     await expect(column.getByRole('heading', { level: 3 })).toHaveText(`${status.label} task`)
   }
   await page.screenshot({ path: testInfo.outputPath('desktop-board.png'), fullPage: true })
-  await page.getByLabel('Status for Planned task').selectOption('in_progress')
+  await chooseOption(page, page.getByLabel('Status for Planned task'), 'In progress')
   const planned = board.getByRole('region', { name: 'Planned', exact: true })
   const inProgress = board.getByRole('region', { name: 'In progress', exact: true })
   await expect(planned.getByText('No tasks on this page.')).toBeVisible()
@@ -29,7 +30,7 @@ test('groups tasks by status and keeps all columns when filtered', async ({
     'In progress task',
     'Planned task',
   ])
-  await page.getByLabel('Filter by status').selectOption('in_progress')
+  await chooseOption(page, page.getByLabel('Filter by status'), 'In progress')
   await expect(board.getByRole('heading', { level: 3 })).toHaveCount(2)
   await expect(board.getByRole('heading', { level: 2 })).toHaveCount(5)
   await page.getByLabel('Search tasks').fill('No matching task')

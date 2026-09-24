@@ -36,19 +36,19 @@ export function Dialog({
       open={open}
       onClose={handleClose}
       role={role}
-      className="relative z-50"
+      className="relative z-50 focus:outline-none"
     >
-      <DialogBackdrop className="fixed inset-0 bg-black/30" />
-      <div className="fixed inset-0 w-screen overflow-y-auto p-4">
-        <div className="flex min-h-full items-center justify-center">
-          <DialogPanel className="w-full max-w-lg rounded-lg bg-white p-6 text-gray-900">
-            <DialogTitle className="text-xl font-semibold">{title}</DialogTitle>
+      <DialogBackdrop className="fixed inset-0 bg-gray-950/20" />
+      <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+        <div className="flex min-h-full items-center justify-center p-4">
+          <DialogPanel className="w-full max-w-md rounded-xl bg-white p-6 text-gray-900">
+            <DialogTitle className="text-base font-medium">{title}</DialogTitle>
             {description ? (
-              <Description className="mt-3 text-gray-600">
+              <Description className="mt-2 text-sm text-gray-500">
                 {description}
               </Description>
             ) : null}
-            <div className="mt-5">{children}</div>
+            <div className="mt-4">{children}</div>
           </DialogPanel>
         </div>
       </div>

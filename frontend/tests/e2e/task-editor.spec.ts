@@ -1,3 +1,4 @@
+import { chooseOption } from './support/select'
 import { expect, test } from './support/workspace'
 
 test('validates a task title before sending it to the server', async ({
@@ -39,8 +40,7 @@ test('creates, edits, and deletes a task', async ({ page, workspace }) => {
   await dialog.getByLabel('Title', { exact: true }).fill('Write notes')
   await dialog.getByLabel('Description').fill('Meeting notes')
   await dialog.getByLabel('Due date', { exact: true }).fill('2026-11-12')
-  await expect(dialog.getByLabel('Assigned to')).toContainText('Bruno Costa')
-  await dialog.getByLabel('Assigned to').selectOption('2')
+  await chooseOption(page, dialog.getByLabel('Assigned to'), 'Bruno Costa')
   await dialog.getByRole('button', { name: 'Save task' }).click()
   await expect(dialog).toHaveCount(0)
   await page.reload()
@@ -52,7 +52,7 @@ test('creates, edits, and deletes a task', async ({ page, workspace }) => {
   await expect(dialog.getByLabel('Description')).toHaveValue('Meeting notes')
   await dialog.getByLabel('Title', { exact: true }).fill('Updated notes')
   await dialog.getByLabel('Due date', { exact: true }).fill('')
-  await dialog.getByLabel('Assigned to').selectOption('unassigned')
+  await chooseOption(page, dialog.getByLabel('Assigned to'), 'Unassigned')
   await dialog.getByRole('button', { name: 'Save task' }).click()
   await expect(
     page.getByRole('heading', { name: 'Updated notes' }),
@@ -156,20 +156,20 @@ test('saves a status change and keeps the saved status after a failure', async (
   /** Displays server state after successful and rejected writes. */
   await workspace.open()
   const status = page.getByLabel('Status for Prepare report')
-  await status.selectOption('done')
+  await chooseOption(page, status, 'Done')
   await expect(status).toBeEnabled()
-  await expect(status).toHaveValue('done')
+  await expect(status).toHaveText('Done')
   await expect(
     page.getByRole('region', { name: 'Done', exact: true }).getByRole('heading', { level: 3 }),
   ).toHaveText('Prepare report')
   await page.reload()
-  await expect(status).toHaveValue('done')
+  await expect(status).toHaveText('Done')
   await page.route('**/api/tasks/4/status/', (route) =>
     route.fulfill({ status: 500 }),
   )
-  await status.selectOption('blocked')
+  await chooseOption(page, status, 'Blocked')
   await expect(page.getByRole('alert')).toContainText('Please try again.')
-  await expect(status).toHaveValue('done')
+  await expect(status).toHaveText('Done')
   await expect(
     page.getByRole('region', { name: 'Blocked', exact: true }).getByRole('heading', { level: 3 }),
   ).toHaveCount(0)

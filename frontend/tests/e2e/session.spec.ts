@@ -1,3 +1,4 @@
+import { chooseOption } from './support/select'
 import { expect, test } from './support/workspace'
 import { mockApi } from './support/mock-api'
 
@@ -60,7 +61,7 @@ test('returns to login when the session expires during a status change', async (
   await page.route('**/api/auth/browser/token/', (route) =>
     route.fulfill({ status: 401 }),
   )
-  await page.getByLabel('Status for Prepare report').selectOption('done')
+  await chooseOption(page, page.getByLabel('Status for Prepare report'), 'Done')
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
   await expect(page.getByRole('status')).toHaveText(
     'Your session has expired. Please sign in again.',
@@ -106,8 +107,8 @@ test('renews an expired access token and retries the write', async ({
     if (attempts === 1) await route.fulfill({ status: 401 })
     else await route.fallback()
   })
-  await page.getByLabel('Status for Prepare report').selectOption('done')
-  await expect(page.getByLabel('Status for Prepare report')).toHaveValue('done')
+  await chooseOption(page, page.getByLabel('Status for Prepare report'), 'Done')
+  await expect(page.getByLabel('Status for Prepare report')).toHaveText('Done')
   expect(attempts).toBe(2)
   await expect(
     page.getByRole('heading', { name: 'Tasks', exact: true }),

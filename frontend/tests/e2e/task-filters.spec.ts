@@ -1,3 +1,4 @@
+import { chooseOption } from './support/select'
 import { makeTask, makeTasks } from '../support/fixtures'
 import { PAGE_SIZE } from '@/config'
 import { expect, test } from './support/workspace'
@@ -26,7 +27,7 @@ test('applies each filter automatically and resets pagination', async ({
     page.getByRole('heading', { name: 'Task 1', exact: true }),
   ).toBeVisible()
   await expect(page.getByRole('button', { name: 'Apply filters' })).toHaveCount(0)
-  await page.getByLabel('Filter by status').selectOption('done')
+  await chooseOption(page, page.getByLabel('Filter by status'), 'Done')
   await expect(
     page.getByRole('region', { name: 'Task board' }).getByRole('heading', { level: 3 }),
   ).toHaveText(['Find this report'])
@@ -36,7 +37,7 @@ test('applies each filter automatically and resets pagination', async ({
   await expect.poll(
     () => workspace.taskRequests.at(-1)?.searchParams.get('due_date'),
   ).toBe('2026-10-10')
-  await page.getByLabel('Filter by assignee').selectOption('2')
+  await chooseOption(page, page.getByLabel('Filter by assignee'), 'Bruno Costa')
   await expect.poll(
     () => workspace.taskRequests.at(-1)?.searchParams.get('assigned_to'),
   ).toBe('2')
@@ -58,9 +59,9 @@ test('applies each filter automatically and resets pagination', async ({
   })
   await page.getByRole('button', { name: 'Reset', exact: true }).click()
   await expect(page.getByLabel('Search tasks')).toHaveValue('')
-  await expect(page.getByLabel('Filter by status')).toHaveValue('all')
+  await expect(page.getByLabel('Filter by status')).toHaveText('All statuses')
   await expect(page.getByLabel('Filter by due date')).toHaveValue('')
-  await expect(page.getByLabel('Filter by assignee')).toHaveValue('all')
+  await expect(page.getByLabel('Filter by assignee')).toHaveText('All assignees')
   await expect(
     page.getByRole('region', { name: 'Task board' }).getByRole('heading', { level: 3 }),
   ).toHaveCount(PAGE_SIZE)
@@ -72,7 +73,7 @@ test('filters unassigned tasks and handles no results', async ({
 }) => {
   /** Sends the unassigned filter and shows an empty result clearly. */
   await workspace.open({ tasks: [makeTask({ assigned_to: 1 })] })
-  await page.getByLabel('Filter by assignee').selectOption('unassigned')
+  await chooseOption(page, page.getByLabel('Filter by assignee'), 'Unassigned')
   await expect(page.getByText('No tasks found.')).toBeVisible()
   expect(workspace.taskRequests.at(-1)?.searchParams.get('unassigned')).toBe(
     'true',

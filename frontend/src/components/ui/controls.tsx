@@ -5,22 +5,21 @@ import {
   Fieldset as HeadlessFieldset,
   Input as HeadlessInput,
   Label,
-  Select as HeadlessSelect,
+  Listbox,
+  ListboxButton,
+  ListboxOption,
+  ListboxOptions,
   Textarea as HeadlessTextarea,
 } from '@headlessui/react'
-import {
-  useCallback,
-  type ChangeEvent,
-  type ComponentPropsWithRef,
-  type ReactNode,
-} from 'react'
+import type { ComponentPropsWithRef, ReactNode } from 'react'
+import { Icon } from './Icon'
 
 const buttonStyles = {
-  primary: 'bg-blue-700 px-4 text-white data-hover:bg-blue-800',
-  secondary: 'border border-gray-300 bg-white px-4 data-hover:bg-gray-100',
-  danger: 'border border-red-200 px-3 text-red-700 data-hover:bg-red-50',
+  primary: 'bg-gray-700 text-white data-hover:bg-gray-600',
+  secondary: 'bg-gray-100 data-hover:bg-gray-200',
+  danger: 'bg-red-700 text-white data-hover:bg-red-600',
   plain: 'underline',
-  icon: 'size-11 shrink-0 text-gray-600 data-hover:bg-gray-100',
+  icon: 'shrink-0 data-hover:bg-gray-100',
 }
 
 export type ButtonProps = ComponentPropsWithRef<'button'> & {
@@ -37,7 +36,7 @@ export function Button({
     <HeadlessButton
       {...props}
       type={type}
-      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded focus-visible:outline-2 focus-visible:outline-blue-600 data-disabled:opacity-50 ${buttonStyles[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-gray-700 disabled:opacity-50 ${buttonStyles[variant]} ${className}`}
     />
   )
 }
@@ -55,19 +54,19 @@ function ControlField({
 }: ControlLabelProps & { disabled?: boolean; children: ReactNode }) {
   return (
     <Field disabled={disabled} className="min-w-0">
-      {label ? <Label className="block">{label}</Label> : null}
-      {children}
+      {label ? <Label className="text-sm font-medium">{label}</Label> : null}
       {description ? (
-        <Description className="mt-1 text-sm text-gray-600">
+        <Description className="text-sm text-gray-500">
           {description}
         </Description>
       ) : null}
+      {children}
     </Field>
   )
 }
 
 const controlStyles =
-  'block min-h-11 w-full min-w-0 rounded border border-gray-300 bg-white px-3 focus:outline-2 focus:outline-blue-600 data-disabled:opacity-50'
+  'block w-full min-w-0 rounded-lg bg-gray-100 px-3 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-gray-700 disabled:opacity-50'
 
 export type InputProps = ComponentPropsWithRef<'input'> & ControlLabelProps
 
@@ -81,7 +80,7 @@ export function Input({
     <ControlField label={label} description={description} disabled={props.disabled}>
       <HeadlessInput
         {...props}
-        className={`${controlStyles} ${label ? 'mt-1' : ''} ${className}`}
+        className={`${controlStyles} ${label || description ? 'mt-3' : ''} ${className}`}
       />
     </ControlField>
   )
@@ -99,7 +98,7 @@ export function Textarea({
     <ControlField label={label} description={description} disabled={props.disabled}>
       <HeadlessTextarea
         {...props}
-        className={`${controlStyles} py-3 ${label ? 'mt-1' : ''} ${className}`}
+        className={`${controlStyles} ${label || description ? 'mt-3' : ''} ${className}`}
       />
     </ControlField>
   )
@@ -112,8 +111,8 @@ export type SelectOption<Value extends string | number> = {
 }
 
 export type SelectProps<Value extends string | number> = Omit<
-  ComponentPropsWithRef<'select'>,
-  'children' | 'value' | 'defaultValue' | 'onChange' | 'multiple'
+  ComponentPropsWithRef<'button'>,
+  'children' | 'value' | 'defaultValue' | 'onChange' | 'type'
 > & ControlLabelProps & {
   options: readonly SelectOption<Value>[]
   value: NoInfer<Value>
@@ -124,37 +123,49 @@ export function Select<Value extends string | number>({
   label,
   description,
   options,
+  value,
   onChange,
+  name,
+  form,
+  disabled,
   className = '',
   ...props
 }: SelectProps<Value>) {
-  const handleChange = useCallback(
-    (event: ChangeEvent<HTMLSelectElement>) => {
-      const option = options.find(
-        (item) => String(item.value) === event.currentTarget.value,
-      )
-      if (option) onChange(option.value)
-    },
-    [onChange, options],
-  )
+  const selectedOption = options.find((option) => option.value === value)
 
   return (
-    <ControlField label={label} description={description} disabled={props.disabled}>
-      <HeadlessSelect
-        {...props}
-        onChange={handleChange}
-        className={`${controlStyles} ${label ? 'mt-1' : ''} ${className}`}
+    <ControlField label={label} description={description} disabled={disabled}>
+      <Listbox
+        value={value}
+        onChange={onChange}
+        name={name}
+        form={form}
+        disabled={disabled}
       >
-        {options.map((option) => (
-          <option
-            key={option.value}
-            value={option.value}
-            disabled={option.disabled}
-          >
-            {option.label}
-          </option>
-        ))}
-      </HeadlessSelect>
+        <ListboxButton
+          {...props}
+          className={`${controlStyles} relative pr-8 text-left ${label || description ? 'mt-3' : ''} ${className}`}
+        >
+          <span className="block truncate">{selectedOption?.label ?? String(value)}</span>
+          <Icon name="chevronDown" className="pointer-events-none absolute top-2.5 right-2.5 size-4 text-gray-500" />
+        </ListboxButton>
+        <ListboxOptions
+          anchor="bottom"
+          className="z-60 w-(--button-width) rounded-lg bg-white p-1 shadow-lg [--anchor-gap:4px] focus:outline-none"
+        >
+          {options.map((option) => (
+            <ListboxOption
+              key={option.value}
+              value={option.value}
+              disabled={option.disabled}
+              className="group flex items-center gap-2 rounded-md px-3 py-1.5 text-sm data-focus:bg-gray-100 data-disabled:opacity-50"
+            >
+              <Icon name="check" className="invisible size-4 shrink-0 group-data-selected:visible" />
+              <span className="min-w-0 wrap-anywhere">{option.label}</span>
+            </ListboxOption>
+          ))}
+        </ListboxOptions>
+      </Listbox>
     </ControlField>
   )
 }
@@ -165,7 +176,7 @@ export function Fieldset({ className = '', ...props }: FieldsetProps) {
   return (
     <HeadlessFieldset
       {...props}
-      className={`min-w-0 space-y-4 data-disabled:opacity-60 ${className}`}
+      className={`min-w-0 space-y-4 rounded-xl bg-gray-50 p-4 ${className}`}
     />
   )
 }
