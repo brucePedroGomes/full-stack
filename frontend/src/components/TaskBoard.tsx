@@ -1,4 +1,5 @@
 import { taskStatuses, type Task, type TaskStatus } from '@/api/tasks'
+import { useTaskContext } from '@/contexts/TaskContext'
 import { TaskCard } from './TaskCard'
 
 const statusColors: Record<TaskStatus, { dot: string; column: string }> = {
@@ -11,21 +12,14 @@ const statusColors: Record<TaskStatus, { dot: string; column: string }> = {
 
 type TaskBoardProps = {
   tasks: Task[]
-  busy: boolean
-  onStatusChange: (id: number, status: TaskStatus) => void
-  onEdit: (task: Task) => void
 }
 
-export function TaskBoard({
-  tasks,
-  busy,
-  onStatusChange,
-  onEdit,
-}: TaskBoardProps) {
+export function TaskBoard({ tasks }: TaskBoardProps) {
+  const { status: statusChange } = useTaskContext()
   return (
     <section
       aria-label="Task board"
-      aria-busy={busy}
+      aria-busy={statusChange.isPending}
       className="grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
     >
       {taskStatuses.map((status) => {
@@ -56,13 +50,7 @@ export function TaskBoard({
             {columnTasks.length ? (
               <ul aria-label={`${status.label} tasks`} className="space-y-3">
                 {columnTasks.map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    busy={busy}
-                    onStatusChange={onStatusChange}
-                    onEdit={onEdit}
-                  />
+                  <TaskCard key={task.id} task={task} />
                 ))}
               </ul>
             ) : (

@@ -4,6 +4,7 @@ import { useSession } from './hooks/useSession'
 import { LoginForm } from './components/LoginForm'
 import { TaskPage } from './components/TaskPage'
 import { Button } from './components/ui'
+import { TaskProvider } from './contexts/TaskContext'
 
 export default function App(): ReactElement {
   const { session, login, logout, notice, signIn, signOut, endSession } = useSession()
@@ -44,7 +45,9 @@ export default function App(): ReactElement {
           {getApiErrorMessage(logout.error)}
         </p>
       ) : null}
-      <TaskPage {...session.data} onSessionExpired={endSession} />
+      <TaskProvider {...session.data} onSessionExpired={endSession}>
+        <TaskPage />
+      </TaskProvider>
     </div>
   )
 }

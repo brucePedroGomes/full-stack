@@ -1,11 +1,7 @@
-import { useCallback, useEffect, useState, type SubmitEvent } from 'react'
-import {
-  getApiErrorMessage,
-  SessionExpiredError,
-  type Session,
-} from '@/api/session'
+import { useState, type SubmitEvent } from 'react'
+import { getApiErrorMessage } from '@/api/session'
 import { taskInputSchema, type Task } from '@/api/tasks'
-import { useTaskMutations } from '@/hooks/useTasks'
+import { useTaskContext } from '@/contexts/TaskContext'
 import { useUserOptions } from '@/hooks/useUserOptions'
 import {
   Button,
@@ -21,74 +17,55 @@ import {
 
 type TaskFormProps = {
   task: Task | null
-  session: Session
-  onClose: () => void
-  onSaved: () => Promise<void>
-  onSessionExpired: (message: string) => void
 }
 
-export function TaskForm({
-  task,
-  session,
-  onClose,
-  onSaved,
-  onSessionExpired,
-}: TaskFormProps) {
+export function TaskForm({ task }: TaskFormProps) {
+  const { save, remove, closeEditor } = useTaskContext()
   const [validationError, setValidationError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [assignee, setAssignee] = useState<number | 'unassigned'>(
     task?.assigned_to ?? 'unassigned',
   )
-  const users = useUserOptions(session, onSessionExpired, task?.assignee)
+  const users = useUserOptions(task?.assignee)
   const assigneeOptions: SelectOption<number | 'unassigned'>[] = [
     { value: 'unassigned', label: 'Unassigned' },
     ...users.options,
   ]
-  const { save, remove } = useTaskMutations(session, task, onSaved)
   const busy = save.isPending || remove.isPending
-  const error = save.error || remove.error
-  const { mutate: saveTask, reset: resetSave } = save
-  const { mutate: removeTask, reset: resetRemove } = remove
 
-  const handleSubmit = useCallback(
-    (event: SubmitEvent<HTMLFormElement>) => {
-      event.preventDefault()
-      const result = taskInputSchema.safeParse({
-        ...Object.fromEntries(new FormData(event.currentTarget)),
-        assigned_to: assignee === 'unassigned' ? null : assignee,
-      })
-      if (!result.success) {
-        setValidationError(result.error.issues[0].message)
-        return
-      }
-      setValidationError('')
-      resetRemove()
-      saveTask(result.data)
-    },
-    [assignee, resetRemove, saveTask],
-  )
-  const handleRequestDelete = useCallback(() => {
-    resetRemove()
+  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const result = taskInputSchema.safeParse({
+      ...Object.fromEntries(new FormData(event.currentTarget)),
+      assigned_to: assignee === 'unassigned' ? null : assignee,
+    })
+    if (!result.success) {
+      setValidationError(result.error.issues[0].message)
+      return
+    }
+    setValidationError('')
+    remove.reset()
+    save.mutate(result.data)
+  }
+
+  function handleRequestDelete() {
+    remove.reset()
     setConfirmDelete(true)
-  }, [resetRemove])
-  const handleCancelDelete = useCallback(() => setConfirmDelete(false), [])
-  const handleDelete = useCallback(() => {
+  }
+
+  function handleDelete() {
     if (task) {
       setValidationError('')
-      resetSave()
-      removeTask(task.id)
+      save.reset()
+      remove.mutate(task.id)
     }
-  }, [task, resetSave, removeTask])
-
-  useEffect(() => {
-    if (error instanceof SessionExpiredError) onSessionExpired(error.message)
-  }, [error, onSessionExpired])
+  }
 
   return (
     <Dialog
       open
       title={task ? 'Edit task' : 'New task'}
-      onClose={onClose}
+      onClose={closeEditor}
       closeDisabled={busy}
     >
       <form className="space-y-4" onSubmit={handleSubmit}>
@@ -152,7 +129,7 @@ export function TaskForm({
               <Icon name="delete" /> Delete
             </Button>
           ) : null}
-          <Button disabled={busy} onClick={onClose}>
+          <Button disabled={busy} onClick={closeEditor}>
             Cancel
           </Button>
           <Button type="submit" variant="primary" disabled={busy}>
@@ -167,7 +144,7 @@ export function TaskForm({
           description={`Delete "${task.title}"? This cannot be undone.`}
           confirmLabel={remove.isPending ? 'Deleting...' : 'Delete'}
           onConfirm={handleDelete}
-          onClose={handleCancelDelete}
+          onClose={() => setConfirmDelete(false)}
           pending={remove.isPending}
           error={remove.error ? getApiErrorMessage(remove.error) : undefined}
         />

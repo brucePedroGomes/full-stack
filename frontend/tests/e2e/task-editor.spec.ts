@@ -147,6 +147,10 @@ test('keeps form values when the backend rejects a task', async ({
   await expect(
     page.getByRole('button', { name: 'Edit Prepare report' }),
   ).toBeFocused()
+
+  await page.getByRole('button', { name: 'New task', exact: true }).click()
+  await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue('')
+  await expect(dialog.getByRole('alert')).toHaveCount(0)
 })
 
 test('saves a status change and keeps the saved status after a failure', async ({

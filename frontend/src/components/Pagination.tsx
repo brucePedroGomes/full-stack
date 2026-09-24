@@ -1,4 +1,3 @@
-import { useCallback } from 'react'
 import { Button, Icon } from './ui'
 
 type PaginationProps = {
@@ -16,15 +15,12 @@ export function Pagination({
   busy,
   onChange,
 }: PaginationProps) {
-  const handlePrevious = useCallback(() => onChange(page - 1), [onChange, page])
-  const handleNext = useCallback(() => onChange(page + 1), [onChange, page])
-
   return (
     <nav aria-label={label} className="flex flex-wrap items-center gap-3">
       <Button
         type="button"
         disabled={busy || page === 1}
-        onClick={handlePrevious}
+        onClick={() => onChange(page - 1)}
       >
         <Icon name="previous" className="size-4" /> Previous
       </Button>
@@ -32,7 +28,7 @@ export function Pagination({
       <Button
         type="button"
         disabled={busy || !hasNext}
-        onClick={handleNext}
+        onClick={() => onChange(page + 1)}
       >
         Next <Icon name="next" className="size-4" />
       </Button>

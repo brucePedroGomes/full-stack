@@ -1,42 +1,39 @@
-import { useCallback, useState } from 'react'
+import { useEffect } from 'react'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { defaultFilters, type TaskFilters as Filters } from '@/api/tasks'
+import { usersQuery } from '@/api/users'
 import { TaskFilters } from '@/components/TaskFilters'
+import { TaskProvider, useTaskContext } from '@/contexts/TaskContext'
 import { makeSignedInSession, makeUsers } from '../support/fixtures'
 import { createTestQueryClient, renderWithQuery } from './render'
 
-const { session } = makeSignedInSession()
+const signedInSession = makeSignedInSession()
 const onSessionExpired = vi.fn()
 
-function FilterHarness({ onApply }: { onApply: (filters: Filters) => void }) {
-  const [filters, setFilters] = useState(defaultFilters)
-  const handleApply = useCallback(
-    (value: Filters) => {
-      setFilters(value)
-      onApply(value)
-    },
-    [onApply],
-  )
+vi.mock('@/api/session', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/api/session')>()),
+  requestWithSession: vi.fn(async () => ({ count: 0, next: null, results: [] })),
+}))
 
-  return (
-    <TaskFilters
-      session={session}
-      filters={filters}
-      onApply={handleApply}
-      onSessionExpired={onSessionExpired}
-    />
-  )
+function FilterHarness({ onApply }: { onApply: (filters: Filters) => void }) {
+  const { filters } = useTaskContext()
+  useEffect(() => onApply(filters), [filters, onApply])
+  return <TaskFilters />
 }
 
 function openFilters() {
   const client = createTestQueryClient()
-  client.setQueryData(['users', 'all'], makeUsers())
+  client.setQueryData(usersQuery(signedInSession.session).queryKey, makeUsers())
   const onApply = vi.fn()
-  return {
-    onApply,
-    ...renderWithQuery(<FilterHarness onApply={onApply} />, client),
-  }
+  const view = renderWithQuery(
+    <TaskProvider {...signedInSession} onSessionExpired={onSessionExpired}>
+      <FilterHarness onApply={onApply} />
+    </TaskProvider>,
+    client,
+  )
+  onApply.mockClear()
+  return { onApply, ...view }
 }
 
 function chooseOption(label: string, option: string) {
@@ -54,7 +51,7 @@ test('applies search once after typing stops', () => {
   fireEvent.change(search, { target: { value: 'Fir' } })
   act(() => vi.advanceTimersByTime(200))
   fireEvent.change(search, { target: { value: ' First draft ' } })
-  act(() => vi.advanceTimersByTime(299))
+  act(() => vi.advanceTimersByTime(499))
   expect(onApply).not.toHaveBeenCalled()
   act(() => vi.advanceTimersByTime(1))
   expect(onApply).toHaveBeenCalledExactlyOnceWith({
@@ -86,7 +83,7 @@ test('applies selections immediately and keeps them when search finishes', () =>
     due_date: '2026-10-10',
     assignee: 2,
   })
-  act(() => vi.advanceTimersByTime(300))
+  act(() => vi.advanceTimersByTime(500))
   expect(onApply).toHaveBeenLastCalledWith({
     search: 'report',
     status: 'done',
@@ -101,7 +98,7 @@ test('reset clears all controls and cancels a pending search', () => {
   fireEvent.change(screen.getByLabelText('Search tasks'), {
     target: { value: 'applied search' },
   })
-  act(() => vi.advanceTimersByTime(300))
+  act(() => vi.advanceTimersByTime(500))
   chooseOption('Filter by status', 'Blocked')
   fireEvent.change(screen.getByLabelText('Filter by due date'), {
     target: { value: '2026-10-10' },
@@ -117,7 +114,7 @@ test('reset clears all controls and cancels a pending search', () => {
   expect(screen.getByLabelText('Filter by status')).toHaveTextContent('All statuses')
   expect(screen.getByLabelText('Filter by due date')).toHaveValue('')
   expect(screen.getByLabelText('Filter by assignee')).toHaveTextContent('All assignees')
-  act(() => vi.advanceTimersByTime(300))
+  act(() => vi.advanceTimersByTime(500))
   expect(onApply).toHaveBeenCalledExactlyOnceWith(defaultFilters)
 })
 
@@ -125,7 +122,7 @@ test('submitting applies the latest search without restoring the previous query'
   const { onApply } = openFilters()
   const search = screen.getByLabelText('Search tasks')
   fireEvent.change(search, { target: { value: 'old search' } })
-  act(() => vi.advanceTimersByTime(300))
+  act(() => vi.advanceTimersByTime(500))
   onApply.mockClear()
 
   fireEvent.change(search, { target: { value: ' new search ' } })
@@ -135,7 +132,7 @@ test('submitting applies the latest search without restoring the previous query'
     search: 'new search',
   })
 
-  act(() => vi.advanceTimersByTime(300))
+  act(() => vi.advanceTimersByTime(500))
   expect(onApply).toHaveBeenCalledTimes(1)
 })
 
@@ -144,13 +141,13 @@ test('clears search and cancels pending work when the filters unmount', () => {
   const { onApply, unmount } = openFilters()
   const search = screen.getByLabelText('Search tasks')
   fireEvent.change(search, { target: { value: 'report' } })
-  act(() => vi.advanceTimersByTime(300))
+  act(() => vi.advanceTimersByTime(500))
   fireEvent.change(search, { target: { value: '' } })
-  act(() => vi.advanceTimersByTime(300))
+  act(() => vi.advanceTimersByTime(500))
   expect(onApply).toHaveBeenLastCalledWith(defaultFilters)
   onApply.mockClear()
   fireEvent.change(search, { target: { value: 'unfinished' } })
   unmount()
-  act(() => vi.advanceTimersByTime(300))
+  act(() => vi.advanceTimersByTime(500))
   expect(onApply).not.toHaveBeenCalled()
 })

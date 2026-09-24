@@ -3,11 +3,10 @@
   "options": {
     "maxWarnings": 0
   },
-  "plugins": ["typescript", "unicorn", "oxc", "react", "react-perf"],
+  "plugins": ["typescript", "unicorn", "oxc", "react"],
   "rules": {
     "react/rules-of-hooks": "error",
-    "react/exhaustive-deps": "error",
-    "react-perf/jsx-no-new-function-as-prop": "error"
+    "react/exhaustive-deps": "error"
   },
   "overrides": [
     {

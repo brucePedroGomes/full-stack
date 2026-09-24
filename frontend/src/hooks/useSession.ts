@@ -38,8 +38,10 @@ export function useSession() {
     mutationFn: signOut,
     onSuccess: () => endSession('You have signed out.'),
   })
-  const { mutate: logoutUser } = logout
-  const handleSignOut = useCallback(() => logoutUser(), [logoutUser])
+
+  function handleSignOut() {
+    logout.mutate()
+  }
 
   return {
     session,

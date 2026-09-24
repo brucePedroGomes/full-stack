@@ -1,9 +1,4 @@
-import {
-  useCallback,
-  useState,
-  type SubmitEvent,
-  type ReactElement,
-} from 'react'
+import { useState, type SubmitEvent, type ReactElement } from 'react'
 import {
   credentialsSchema,
   getApiErrorMessage,
@@ -25,21 +20,19 @@ export function LoginForm({
   notice,
 }: LoginFormProps): ReactElement {
   const [validationError, setValidationError] = useState('')
-  const handleSubmit = useCallback(
-    (event: SubmitEvent<HTMLFormElement>) => {
-      event.preventDefault()
-      const result = credentialsSchema.safeParse(
-        Object.fromEntries(new FormData(event.currentTarget)),
-      )
-      if (!result.success) {
-        setValidationError(result.error.issues[0].message)
-        return
-      }
-      setValidationError('')
-      onSignIn(result.data)
-    },
-    [onSignIn],
-  )
+
+  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const result = credentialsSchema.safeParse(
+      Object.fromEntries(new FormData(event.currentTarget)),
+    )
+    if (!result.success) {
+      setValidationError(result.error.issues[0].message)
+      return
+    }
+    setValidationError('')
+    onSignIn(result.data)
+  }
 
   return (
     <main className="mx-auto max-w-sm px-6 py-16 text-gray-900">

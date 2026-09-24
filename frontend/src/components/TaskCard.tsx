@@ -1,23 +1,14 @@
-import { useCallback } from 'react'
-import { taskStatuses, type Task, type TaskStatus } from '@/api/tasks'
+import { taskStatuses, type Task } from '@/api/tasks'
 import { getUserName } from '@/api/users'
+import { useTaskContext } from '@/contexts/TaskContext'
 import { Button, Icon, Select } from './ui'
 
 type TaskCardProps = {
   task: Task
-  busy: boolean
-  onStatusChange: (id: number, status: TaskStatus) => void
-  onEdit: (task: Task) => void
 }
 
-export function TaskCard({ task, busy, onStatusChange, onEdit }: TaskCardProps) {
-  const handleStatusChange = useCallback(
-    (value: TaskStatus) => {
-      onStatusChange(task.id, value)
-    },
-    [onStatusChange, task.id],
-  )
-  const handleEdit = useCallback(() => onEdit(task), [onEdit, task])
+export function TaskCard({ task }: TaskCardProps) {
+  const { status, editTask } = useTaskContext()
 
   return (
     <li className="min-w-0 space-y-3 rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
@@ -29,8 +20,8 @@ export function TaskCard({ task, busy, onStatusChange, onEdit }: TaskCardProps) 
           type="button"
           variant="icon"
           aria-label={`Edit ${task.title}`}
-          onClick={handleEdit}
-          disabled={busy}
+          onClick={() => editTask(task)}
+          disabled={status.isPending}
         >
           <Icon name="edit" />
         </Button>
@@ -53,8 +44,8 @@ export function TaskCard({ task, busy, onStatusChange, onEdit }: TaskCardProps) 
       <Select
         aria-label={`Status for ${task.title}`}
         value={task.status}
-        disabled={busy}
-        onChange={handleStatusChange}
+        disabled={status.isPending}
+        onChange={(value) => status.mutate({ id: task.id, value })}
         options={taskStatuses}
         className="text-sm"
       />

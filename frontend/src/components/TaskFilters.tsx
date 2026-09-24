@@ -1,16 +1,7 @@
-import {
-  useCallback,
-  useEffect,
-  useState,
-  type ChangeEvent,
-  type SubmitEvent,
-} from 'react'
-import { getApiErrorMessage, type Session } from '@/api/session'
-import {
-  defaultFilters,
-  taskStatuses,
-  type TaskFilters as Filters,
-} from '@/api/tasks'
+import { useEffect, useState, type ChangeEvent, type SubmitEvent } from 'react'
+import { getApiErrorMessage } from '@/api/session'
+import { taskStatuses, type TaskFilters as Filters } from '@/api/tasks'
+import { useTaskContext } from '@/contexts/TaskContext'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useUserOptions } from '@/hooks/useUserOptions'
 import { Button, Input, Select, type SelectOption } from './ui'
@@ -20,22 +11,11 @@ const statusOptions = [
   ...taskStatuses,
 ] as const
 
-type TaskFiltersProps = {
-  session: Session
-  filters: Filters
-  onApply: (filters: Filters) => void
-  onSessionExpired: (message: string) => void
-}
-
-export function TaskFilters({
-  session,
-  filters,
-  onApply,
-  onSessionExpired,
-}: TaskFiltersProps) {
+export function TaskFilters() {
+  const { filters, updateFilters, resetFilters } = useTaskContext()
   const [search, setSearch] = useState(filters.search)
   const debouncedSearch = useDebounce(search, 500)
-  const users = useUserOptions(session, onSessionExpired)
+  const users = useUserOptions()
   const assigneeOptions: SelectOption<Filters['assignee']>[] = [
     { value: 'all', label: 'All assignees' },
     { value: 'unassigned', label: 'Unassigned' },
@@ -47,70 +27,49 @@ export function TaskFilters({
     if (isSearchPending) return
 
     const trimmedSearch = debouncedSearch.trim()
-    const isSearchAlreadyApplied = trimmedSearch === filters.search
-    if (isSearchAlreadyApplied) return
+    if (trimmedSearch !== filters.search) {
+      updateFilters({ search: trimmedSearch })
+    }
+  }, [search, debouncedSearch, filters.search, updateFilters])
 
-    onApply({ ...filters, search: trimmedSearch })
-  }, [debouncedSearch, search, filters, onApply])
+  function changeDueDate(event: ChangeEvent<HTMLInputElement>) {
+    if (event.currentTarget.validity.valid) {
+      updateFilters({ due_date: event.currentTarget.value })
+    }
+  }
 
-  const handleSearchChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setSearch(event.currentTarget.value)
-    },
-    [],
-  )
-  const handleStatusChange = useCallback(
-    (value: Filters['status']) => {
-      onApply({ ...filters, status: value })
-    },
-    [filters, onApply],
-  )
-  const handleDueDateChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      if (!event.currentTarget.validity.valid) return
-      onApply({ ...filters, due_date: event.currentTarget.value })
-    },
-    [filters, onApply],
-  )
-  const handleAssigneeChange = useCallback(
-    (value: Filters['assignee']) => {
-      onApply({ ...filters, assignee: value })
-    },
-    [filters, onApply],
-  )
-  const handleSubmit = useCallback(
-    (event: SubmitEvent<HTMLFormElement>) => {
-      event.preventDefault()
-      if (search.trim() !== filters.search)
-        onApply({ ...filters, search: search.trim() })
-    },
-    [search, filters, onApply],
-  )
-  const handleReset = useCallback(() => {
+  function submit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (search.trim() !== filters.search) {
+      updateFilters({ search: search.trim() })
+    }
+  }
+
+  function reset() {
     setSearch('')
-    onApply(defaultFilters)
-  }, [onApply])
+    resetFilters()
+  }
 
   return (
     <form
       aria-label="Task filters"
       className="grid gap-4 rounded border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4"
-      onSubmit={handleSubmit}
-      onReset={handleReset}
+      onSubmit={submit}
+      onReset={reset}
     >
       <Input
         label="Search tasks"
         name="search"
         type="search"
         value={search}
-        onChange={handleSearchChange}
+        onChange={(event) => setSearch(event.currentTarget.value)}
         placeholder="Title or description"
       />
       <Select
         label="Filter by status"
         name="status"
         value={filters.status}
-        onChange={handleStatusChange}
+        onChange={(status) => updateFilters({ status })}
         options={statusOptions}
       />
       <Input
@@ -119,13 +78,13 @@ export function TaskFilters({
         type="date"
         max="9999-12-31"
         value={filters.due_date}
-        onChange={handleDueDateChange}
+        onChange={changeDueDate}
       />
       <div className="min-w-0 space-y-2">
         <Select
           label="Filter by assignee"
           value={filters.assignee}
-          onChange={handleAssigneeChange}
+          onChange={(assignee) => updateFilters({ assignee })}
           options={assigneeOptions}
         />
         {users.isPending ? (
