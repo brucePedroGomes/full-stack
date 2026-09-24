@@ -1,5 +1,5 @@
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { useCallback } from 'react'
+import { Button, Icon } from './ui'
 
 type PaginationProps = {
   label: string
@@ -21,23 +21,21 @@ export function Pagination({
 
   return (
     <nav aria-label={label} className="flex flex-wrap items-center gap-3">
-      <button
+      <Button
         type="button"
         disabled={busy || page === 1}
         onClick={handlePrevious}
-        className="flex min-h-11 items-center gap-1 rounded border border-gray-300 bg-white px-3 hover:bg-gray-100 disabled:opacity-50"
       >
-        <ChevronLeftIcon aria-hidden="true" className="size-4" /> Previous
-      </button>
+        <Icon name="previous" className="size-4" /> Previous
+      </Button>
       <span>Page {page}</span>
-      <button
+      <Button
         type="button"
         disabled={busy || !hasNext}
         onClick={handleNext}
-        className="flex min-h-11 items-center gap-1 rounded border border-gray-300 bg-white px-3 hover:bg-gray-100 disabled:opacity-50"
       >
-        Next <ChevronRightIcon aria-hidden="true" className="size-4" />
-      </button>
+        Next <Icon name="next" className="size-4" />
+      </Button>
     </nav>
   )
 }

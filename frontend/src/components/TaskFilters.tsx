@@ -5,13 +5,19 @@ import {
   type ChangeEvent,
   type SubmitEvent,
 } from 'react'
-import type { Session } from '@/api/session'
+import { getApiErrorMessage, type Session } from '@/api/session'
 import {
   defaultFilters,
   taskStatuses,
   type TaskFilters as Filters,
 } from '@/api/tasks'
-import { UserSelect, type UserSelection } from './UserSelect'
+import { useUserOptions } from '@/hooks/useUserOptions'
+import { Button, Input, Select, type SelectOption } from './ui'
+
+const statusOptions = [
+  { value: 'all', label: 'All statuses' },
+  ...taskStatuses,
+] as const
 
 type TaskFiltersProps = {
   session: Session
@@ -27,7 +33,12 @@ export function TaskFilters({
   onSessionExpired,
 }: TaskFiltersProps) {
   const [search, setSearch] = useState(filters.search)
-  const [assignee, setAssignee] = useState<UserSelection>('all')
+  const users = useUserOptions(session, onSessionExpired)
+  const assigneeOptions: SelectOption<Filters['assignee']>[] = [
+    { value: 'all', label: 'All assignees' },
+    { value: 'unassigned', label: 'Unassigned' },
+    ...users.options,
+  ]
 
   useEffect(() => {
     const nextSearch = search.trim()
@@ -46,8 +57,8 @@ export function TaskFilters({
     [],
   )
   const handleStatusChange = useCallback(
-    (event: ChangeEvent<HTMLSelectElement>) => {
-      onApply({ ...filters, status: event.currentTarget.value as Filters['status'] })
+    (value: Filters['status']) => {
+      onApply({ ...filters, status: value })
     },
     [filters, onApply],
   )
@@ -59,12 +70,8 @@ export function TaskFilters({
     [filters, onApply],
   )
   const handleAssigneeChange = useCallback(
-    (value: UserSelection) => {
-      setAssignee(value)
-      onApply({
-        ...filters,
-        assignee: value === 'all' ? 'all' : (value?.id ?? 'unassigned'),
-      })
+    (value: Filters['assignee']) => {
+      onApply({ ...filters, assignee: value })
     },
     [filters, onApply],
   )
@@ -78,7 +85,6 @@ export function TaskFilters({
   )
   const handleReset = useCallback(() => {
     setSearch('')
-    setAssignee('all')
     onApply(defaultFilters)
   }, [onApply])
 
@@ -89,60 +95,53 @@ export function TaskFilters({
       onSubmit={handleSubmit}
       onReset={handleReset}
     >
-      <label className="block">
-        Search tasks
-        <input
-          name="search"
-          type="search"
-          value={search}
-          onChange={handleSearchChange}
-          placeholder="Title or description"
-          className="mt-1 min-h-11 w-full rounded border border-gray-300 px-3 focus:outline-2 focus:outline-blue-600"
-        />
-      </label>
-      <label className="block">
-        Filter by status
-        <select
-          name="status"
-          value={filters.status}
-          onChange={handleStatusChange}
-          className="mt-1 min-h-11 w-full rounded border border-gray-300 bg-white px-3 focus:outline-2 focus:outline-blue-600"
-        >
-          <option value="all">All statuses</option>
-          {taskStatuses.map((status) => (
-            <option key={status.value} value={status.value}>
-              {status.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="block">
-        Filter by due date
-        <input
-          name="due_date"
-          type="date"
-          max="9999-12-31"
-          value={filters.due_date}
-          onChange={handleDueDateChange}
-          className="mt-1 min-h-11 w-full min-w-0 rounded border border-gray-300 bg-white px-3 focus:outline-2 focus:outline-blue-600"
-        />
-      </label>
-      <UserSelect
-        label="Filter by assignee"
-        session={session}
-        value={assignee}
-        allowAll
-        onChange={handleAssigneeChange}
-        onSessionExpired={onSessionExpired}
+      <Input
+        label="Search tasks"
+        name="search"
+        type="search"
+        value={search}
+        onChange={handleSearchChange}
+        placeholder="Title or description"
       />
+      <Select
+        label="Filter by status"
+        name="status"
+        value={filters.status}
+        onChange={handleStatusChange}
+        options={statusOptions}
+      />
+      <Input
+        label="Filter by due date"
+        name="due_date"
+        type="date"
+        max="9999-12-31"
+        value={filters.due_date}
+        onChange={handleDueDateChange}
+      />
+      <div className="min-w-0 space-y-2">
+        <Select
+          label="Filter by assignee"
+          value={filters.assignee}
+          onChange={handleAssigneeChange}
+          options={assigneeOptions}
+        />
+        {users.isPending ? (
+          <p role="status" className="text-sm text-gray-600">
+            Loading users...
+          </p>
+        ) : null}
+        {users.error ? (
+          <div role="alert" className="text-sm text-red-700">
+            <p>{getApiErrorMessage(users.error)}</p>
+            <Button variant="plain" onClick={users.retry}>
+              Retry users
+            </Button>
+          </div>
+        ) : null}
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-3 sm:col-span-2 lg:col-span-4">
         <p className="text-sm text-gray-600">Filters update automatically.</p>
-        <button
-          type="reset"
-          className="min-h-11 rounded border border-gray-300 px-4 hover:bg-gray-100"
-        >
-          Reset
-        </button>
+        <Button type="reset">Reset</Button>
       </div>
     </form>
   )

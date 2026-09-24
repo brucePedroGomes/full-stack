@@ -1,7 +1,7 @@
-import { useCallback, type ChangeEvent } from 'react'
-import { PencilSquareIcon } from '@heroicons/react/24/outline'
+import { useCallback } from 'react'
 import { taskStatuses, type Task, type TaskStatus } from '@/api/tasks'
 import { getUserName } from '@/api/users'
+import { Button, Icon, Select } from './ui'
 
 type TaskCardProps = {
   task: Task
@@ -12,8 +12,8 @@ type TaskCardProps = {
 
 export function TaskCard({ task, busy, onStatusChange, onEdit }: TaskCardProps) {
   const handleStatusChange = useCallback(
-    (event: ChangeEvent<HTMLSelectElement>) => {
-      onStatusChange(task.id, event.currentTarget.value as TaskStatus)
+    (value: TaskStatus) => {
+      onStatusChange(task.id, value)
     },
     [onStatusChange, task.id],
   )
@@ -25,15 +25,15 @@ export function TaskCard({ task, busy, onStatusChange, onEdit }: TaskCardProps) 
         <h3 className="min-w-0 flex-1 py-2 font-semibold wrap-anywhere">
           {task.title}
         </h3>
-        <button
+        <Button
           type="button"
+          variant="icon"
           aria-label={`Edit ${task.title}`}
           onClick={handleEdit}
           disabled={busy}
-          className="flex size-11 shrink-0 items-center justify-center rounded text-gray-600 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50"
         >
-          <PencilSquareIcon aria-hidden="true" className="size-5" />
-        </button>
+          <Icon name="edit" />
+        </Button>
       </div>
       {task.description ? (
         <p className="line-clamp-3 text-sm text-gray-600 wrap-anywhere">
@@ -50,19 +50,14 @@ export function TaskCard({ task, busy, onStatusChange, onEdit }: TaskCardProps) 
           'No due date'
         )}
       </p>
-      <select
+      <Select
         aria-label={`Status for ${task.title}`}
         value={task.status}
         disabled={busy}
         onChange={handleStatusChange}
-        className="min-h-11 w-full min-w-0 rounded border border-gray-300 bg-white px-3 text-sm focus:outline-2 focus:outline-blue-600 disabled:opacity-50"
-      >
-        {taskStatuses.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+        options={taskStatuses}
+        className="text-sm"
+      />
     </li>
   )
 }

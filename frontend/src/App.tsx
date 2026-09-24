@@ -10,6 +10,7 @@ import {
 } from './api/session'
 import { LoginForm } from './components/LoginForm'
 import { TaskPage } from './components/TaskPage'
+import { Button } from './components/ui'
 
 export default function App(): ReactElement {
   const client = useQueryClient()
@@ -73,13 +74,12 @@ export default function App(): ReactElement {
         <span className="font-semibold">Task manager</span>
         <div className="flex items-center gap-4">
           <span>{session.data.account.username}</span>
-          <button
-            className="min-h-11 rounded border border-gray-300 px-4 hover:bg-gray-100 disabled:opacity-50"
+          <Button
             disabled={logout.isPending}
             onClick={handleSignOut}
           >
             {logout.isPending ? 'Signing out...' : 'Sign out'}
-          </button>
+          </Button>
         </div>
       </header>
       {logout.error ? (

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react'
-import { PlusIcon } from '@heroicons/react/24/outline'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getApiErrorMessage,
@@ -18,6 +17,7 @@ import { Pagination } from './Pagination'
 import { TaskFilters } from './TaskFilters'
 import { TaskForm } from './TaskForm'
 import { TaskBoard } from './TaskBoard'
+import { Button, Icon } from './ui'
 
 type TaskPageProps = SignedInSession & {
   onSessionExpired: (message: string) => void
@@ -79,12 +79,12 @@ export function TaskPage({
     <main className="mx-auto max-w-[100rem] space-y-6 px-4 py-6 sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">Tasks</h1>
-        <button
+        <Button
+          variant="primary"
           onClick={handleNewTask}
-          className="flex min-h-11 items-center gap-2 rounded bg-blue-700 px-4 text-white hover:bg-blue-800"
         >
-          <PlusIcon aria-hidden="true" className="size-5" /> New task
-        </button>
+          <Icon name="add" /> New task
+        </Button>
       </div>
       <TaskFilters
         session={session}
@@ -97,9 +97,9 @@ export function TaskPage({
         <div role="alert" className="text-red-700">
           <p>{getApiErrorMessage(error)}</p>
           {tasks.error ? (
-            <button onClick={handleRetry} className="min-h-11 underline">
+            <Button onClick={handleRetry} variant="plain">
               Retry tasks
-            </button>
+            </Button>
           ) : null}
         </div>
       ) : null}

@@ -58,9 +58,12 @@ test('returns to page one after deleting the last task on a page', async ({
   const pages = page.getByRole('navigation', { name: 'Task pages' })
   await pages.getByRole('button', { name: 'Next' }).click()
   await page.getByRole('button', { name: 'Edit Task 1', exact: true }).click()
-  page.once('dialog', (confirmation) => confirmation.accept())
   await page
     .getByRole('dialog')
+    .getByRole('button', { name: 'Delete', exact: true })
+    .click()
+  await page
+    .getByRole('alertdialog')
     .getByRole('button', { name: 'Delete', exact: true })
     .click()
   await expect(pages).toContainText('Page 1')

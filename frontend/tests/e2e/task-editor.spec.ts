@@ -61,11 +61,63 @@ test('creates, edits, and deletes a task', async ({ page, workspace }) => {
     'Unassigned · No due date',
   )
   await page.getByRole('button', { name: 'Edit Updated notes' }).click()
-  page.once('dialog', (confirmation) => confirmation.accept())
   await dialog.getByRole('button', { name: 'Delete', exact: true }).click()
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Delete', exact: true })
+    .click()
   await expect(page.getByText('No tasks found.')).toBeVisible()
   await page.reload()
   await expect(page.getByText('No tasks found.')).toBeVisible()
+})
+
+test('cancels deletion and can retry a failed confirmation', async ({ page, workspace }) => {
+  /** Keeps the draft and focus, and blocks dismissal while deletion is pending. */
+  await workspace.open()
+  await page.getByRole('button', { name: 'Edit Prepare report' }).click()
+  const editor = page.getByRole('dialog', { name: 'Edit task' })
+  await editor.getByLabel('Title', { exact: true }).fill('Unsaved draft')
+  const deleteButton = editor.getByRole('button', { name: 'Delete', exact: true })
+  await deleteButton.click()
+  const confirmation = page.getByRole('alertdialog', { name: 'Delete task?' })
+  await expect(confirmation.getByRole('button', { name: 'Cancel' })).toBeFocused()
+  await expect(confirmation).toHaveAccessibleDescription(
+    'Delete "Prepare report"? This cannot be undone.',
+  )
+  await confirmation.getByRole('button', { name: 'Cancel' }).click()
+  await expect(confirmation).toHaveCount(0)
+  await expect(deleteButton).toBeFocused()
+  await expect(editor.getByLabel('Title', { exact: true })).toHaveValue('Unsaved draft')
+
+  await deleteButton.click()
+  await page.keyboard.press('Escape')
+  await expect(confirmation).toHaveCount(0)
+  await expect(deleteButton).toBeFocused()
+
+  let releaseResponse = () => {}
+  const responseReady = new Promise<void>((resolve) => {
+    releaseResponse = resolve
+  })
+  await page.route('**/api/tasks/4/', async (route) => {
+    await responseReady
+    await route.fulfill({ status: 500 })
+  })
+  await deleteButton.click()
+  await confirmation.getByRole('button', { name: 'Delete', exact: true }).click()
+  try {
+    await expect(confirmation.getByRole('button', { name: 'Deleting...' })).toBeDisabled()
+    await expect(confirmation.getByRole('button', { name: 'Cancel' })).toBeDisabled()
+    await page.keyboard.press('Escape')
+    await expect(confirmation.getByRole('heading', { name: 'Delete task?' })).toBeVisible()
+  } finally {
+    releaseResponse()
+  }
+  await expect(confirmation.getByRole('alert')).toContainText('Please try again.')
+  await page.unroute('**/api/tasks/4/')
+  await confirmation.getByRole('button', { name: 'Delete', exact: true }).click()
+  await expect(confirmation).toHaveCount(0)
+  await expect(editor).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Prepare report' })).toHaveCount(0)
 })
 
 test('keeps form values when the backend rejects a task', async ({

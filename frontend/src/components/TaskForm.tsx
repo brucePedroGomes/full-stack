@@ -1,11 +1,4 @@
 import { useCallback, useEffect, useState, type SubmitEvent } from 'react'
-import {
-  Dialog,
-  DialogBackdrop,
-  DialogPanel,
-  DialogTitle,
-} from '@headlessui/react'
-import { TrashIcon } from '@heroicons/react/24/outline'
 import { useMutation } from '@tanstack/react-query'
 import {
   getApiErrorMessage,
@@ -20,7 +13,18 @@ import {
   type Task,
   type TaskInput,
 } from '@/api/tasks'
-import { UserSelect, type UserSelection } from './UserSelect'
+import { useUserOptions } from '@/hooks/useUserOptions'
+import {
+  Button,
+  ConfirmDialog,
+  Dialog,
+  Fieldset,
+  Icon,
+  Input,
+  Select,
+  Textarea,
+  type SelectOption,
+} from './ui'
 
 type TaskFormProps = {
   task: Task | null
@@ -38,9 +42,15 @@ export function TaskForm({
   onSessionExpired,
 }: TaskFormProps) {
   const [validationError, setValidationError] = useState('')
-  const [assignee, setAssignee] = useState<UserSelection>(
-    task?.assignee ?? null,
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [assignee, setAssignee] = useState<number | 'unassigned'>(
+    task?.assigned_to ?? 'unassigned',
   )
+  const users = useUserOptions(session, onSessionExpired, task?.assignee)
+  const assigneeOptions: SelectOption<number | 'unassigned'>[] = [
+    { value: 'unassigned', label: 'Unassigned' },
+    ...users.options,
+  ]
   const save = useMutation({
     mutationFn: (values: TaskInput) =>
       task ? updateTask(session, task.id, values) : createTask(session, values),
@@ -55,16 +65,12 @@ export function TaskForm({
   const { mutate: saveTask, reset: resetSave } = save
   const { mutate: removeTask, reset: resetRemove } = remove
 
-  const handleClose = useCallback(() => {
-    if (!busy) onClose()
-  }, [busy, onClose])
   const handleSubmit = useCallback(
     (event: SubmitEvent<HTMLFormElement>) => {
       event.preventDefault()
       const result = taskInputSchema.safeParse({
         ...Object.fromEntries(new FormData(event.currentTarget)),
-        assigned_to:
-          typeof assignee === 'object' ? (assignee?.id ?? null) : null,
+        assigned_to: assignee === 'unassigned' ? null : assignee,
       })
       if (!result.success) {
         setValidationError(result.error.issues[0].message)
@@ -76,8 +82,13 @@ export function TaskForm({
     },
     [assignee, resetRemove, saveTask],
   )
+  const handleRequestDelete = useCallback(() => {
+    resetRemove()
+    setConfirmDelete(true)
+  }, [resetRemove])
+  const handleCancelDelete = useCallback(() => setConfirmDelete(false), [])
   const handleDelete = useCallback(() => {
-    if (task && window.confirm(`Delete "${task.title}"?`)) {
+    if (task) {
       setValidationError('')
       resetSave()
       removeTask(task.id)
@@ -89,93 +100,93 @@ export function TaskForm({
   }, [error, onSessionExpired])
 
   return (
-    <Dialog open onClose={handleClose} className="relative z-50">
-      <DialogBackdrop className="fixed inset-0 bg-black/30" />
-      <div className="fixed inset-0 w-screen overflow-y-auto p-4">
-        <div className="flex min-h-full items-center justify-center">
-          <DialogPanel className="w-full max-w-lg rounded-lg bg-white p-6 text-gray-900">
-            <DialogTitle className="text-xl font-semibold">
-              {task ? 'Edit task' : 'New task'}
-            </DialogTitle>
-            <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
-              <fieldset
-                disabled={busy}
-                className="min-w-0 space-y-4 disabled:opacity-60"
-              >
-                <label className="block">
-                  Title
-                  <input
-                    name="title"
-                    required
-                    maxLength={200}
-                    defaultValue={task?.title ?? ''}
-                    data-autofocus
-                    className="mt-1 min-h-11 w-full rounded border border-gray-300 px-3 focus:outline-2 focus:outline-blue-600"
-                  />
-                </label>
-                <label className="block">
-                  Description
-                  <textarea
-                    name="description"
-                    rows={3}
-                    defaultValue={task?.description ?? ''}
-                    className="mt-1 block w-full rounded border border-gray-300 p-3 focus:outline-2 focus:outline-blue-600"
-                  />
-                </label>
-                <label className="block">
-                  Due date
-                  <input
-                    name="due_date"
-                    type="date"
-                    max="9999-12-31"
-                    defaultValue={task?.due_date ?? ''}
-                    className="mt-1 min-h-11 w-full min-w-0 rounded border border-gray-300 bg-white px-3 focus:outline-2 focus:outline-blue-600"
-                  />
-                </label>
-                <UserSelect
-                  label="Assigned to"
-                  session={session}
-                  value={assignee}
-                  onChange={setAssignee}
-                  onSessionExpired={onSessionExpired}
-                />
-              </fieldset>
-              {validationError || error ? (
-                <p role="alert" className="text-red-700">
-                  {validationError || getApiErrorMessage(error)}
-                </p>
-              ) : null}
-              <div className="flex flex-wrap justify-end gap-3 border-t border-gray-200 pt-4">
-                {task ? (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={handleDelete}
-                    className="mr-auto flex min-h-11 items-center gap-2 rounded border border-red-200 px-3 text-red-700 hover:bg-red-50 disabled:opacity-50"
-                  >
-                    <TrashIcon aria-hidden="true" className="size-5" />
-                    {remove.isPending ? 'Deleting...' : 'Delete'}
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={handleClose}
-                  className="min-h-11 rounded border border-gray-300 px-4 hover:bg-gray-100 disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  disabled={busy}
-                  className="min-h-11 rounded bg-blue-700 px-4 text-white hover:bg-blue-800 disabled:opacity-50"
-                >
-                  {save.isPending ? 'Saving...' : 'Save task'}
-                </button>
+    <Dialog
+      open
+      title={task ? 'Edit task' : 'New task'}
+      onClose={onClose}
+      closeDisabled={busy}
+    >
+      <form className="space-y-4" onSubmit={handleSubmit}>
+        <Fieldset disabled={busy}>
+          <Input
+            label="Title"
+            name="title"
+            required
+            maxLength={200}
+            defaultValue={task?.title ?? ''}
+            autoFocus
+          />
+          <Textarea
+            label="Description"
+            name="description"
+            rows={3}
+            defaultValue={task?.description ?? ''}
+          />
+          <Input
+            label="Due date"
+            name="due_date"
+            type="date"
+            max="9999-12-31"
+            defaultValue={task?.due_date ?? ''}
+          />
+          <div className="min-w-0 space-y-2">
+            <Select
+              label="Assigned to"
+              value={assignee}
+              onChange={setAssignee}
+              options={assigneeOptions}
+            />
+            {users.isPending ? (
+              <p role="status" className="text-sm text-gray-600">
+                Loading users...
+              </p>
+            ) : null}
+            {users.error ? (
+              <div role="alert" className="text-sm text-red-700">
+                <p>{getApiErrorMessage(users.error)}</p>
+                <Button variant="plain" onClick={users.retry}>
+                  Retry users
+                </Button>
               </div>
-            </form>
-          </DialogPanel>
+            ) : null}
+          </div>
+        </Fieldset>
+        {validationError || save.error ? (
+          <p role="alert" className="text-red-700">
+            {validationError || getApiErrorMessage(save.error)}
+          </p>
+        ) : null}
+        <div className="flex flex-wrap justify-end gap-3 border-t border-gray-200 pt-4">
+          {task ? (
+            <Button
+              variant="danger"
+              disabled={busy}
+              onClick={handleRequestDelete}
+              className="mr-auto"
+            >
+              <Icon name="delete" /> Delete
+            </Button>
+          ) : null}
+          <Button disabled={busy} onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary" disabled={busy}>
+            {save.isPending ? 'Saving...' : 'Save task'}
+          </Button>
         </div>
-      </div>
+      </form>
+      {task ? (
+        <ConfirmDialog
+          open={confirmDelete}
+          title="Delete task?"
+          description={`Delete "${task.title}"? This cannot be undone.`}
+          confirmLabel={remove.isPending ? 'Deleting...' : 'Delete'}
+          onConfirm={handleDelete}
+          onClose={handleCancelDelete}
+          pending={remove.isPending}
+          error={remove.error ? getApiErrorMessage(remove.error) : undefined}
+        />
+      ) : null}
     </Dialog>
   )
 }

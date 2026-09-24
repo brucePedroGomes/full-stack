@@ -9,6 +9,7 @@ import {
   getApiErrorMessage,
   type Credentials,
 } from '@/api/session'
+import { Button, Input } from './ui'
 
 type LoginFormProps = {
   onSignIn: (values: Credentials) => void
@@ -49,37 +50,33 @@ export function LoginForm({
         </p>
       ) : null}
       <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-        <label className="block">
-          Username
-          <input
-            className="mt-1 min-h-11 w-full rounded border border-gray-300 px-3 focus:outline-2 focus:outline-blue-600"
-            name="username"
-            autoComplete="username"
-            autoCapitalize="none"
-            required
-          />
-        </label>
-        <label className="block">
-          Password
-          <input
-            className="mt-1 min-h-11 w-full rounded border border-gray-300 px-3 focus:outline-2 focus:outline-blue-600"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-          />
-        </label>
+        <Input
+          label="Username"
+          name="username"
+          autoComplete="username"
+          autoCapitalize="none"
+          required
+        />
+        <Input
+          label="Password"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          required
+        />
         {validationError || error ? (
           <p role="alert" className="text-red-700">
             {validationError || getApiErrorMessage(error)}
           </p>
         ) : null}
-        <button
-          className="min-h-11 w-full rounded bg-blue-700 px-4 text-white hover:bg-blue-800 disabled:opacity-50"
+        <Button
+          type="submit"
+          variant="primary"
+          className="w-full"
           disabled={pending}
         >
           {pending ? 'Signing in...' : 'Sign in'}
-        </button>
+        </Button>
       </form>
     </main>
   )
