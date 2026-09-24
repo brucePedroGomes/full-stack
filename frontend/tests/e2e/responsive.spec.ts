@@ -1,5 +1,5 @@
 import { taskStatuses } from '@/api/tasks'
-import { makeTask } from '../support/fixtures'
+import { makeTask, makeTasks } from '../support/fixtures'
 import { expect, test } from './support/workspace'
 
 test('fits a narrow screen and scrolls the dialog to its actions', async ({
@@ -70,4 +70,23 @@ test('swipes between columns on a phone', async ({ page, workspace }) => {
   const done = board.getByRole('region', { name: 'Done', exact: true })
   await done.scrollIntoViewIfNeeded()
   await expect(done.getByRole('heading', { name: 'Finished task' })).toBeInViewport()
+})
+
+test('uses the whole screen on a wide monitor', async ({ page, workspace }) => {
+  /** The columns share the full width, and only the columns scroll, not the page. */
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await workspace.open({ tasks: makeTasks(30) })
+  const layout = await page.evaluate(() => {
+    const columns = [...document.querySelectorAll('section[aria-labelledby^="column-"]')].map(
+      (column) => column.getBoundingClientRect(),
+    )
+    return {
+      emptyRight: innerWidth - columns[columns.length - 1].right,
+      columnWidth: columns[0].width,
+      pageScrolls: document.documentElement.scrollHeight > innerHeight,
+    }
+  })
+  expect(layout.emptyRight).toBeLessThan(40)
+  expect(layout.columnWidth).toBeGreaterThan(300)
+  expect(layout.pageScrolls).toBe(false)
 })

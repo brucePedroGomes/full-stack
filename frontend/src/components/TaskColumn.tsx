@@ -39,7 +39,7 @@ export function TaskColumn({ status, label }: TaskColumnProps) {
       aria-busy={column.isUpdating}
       onDragOver={(event) => event.preventDefault()}
       onDrop={dropCard}
-      className={`w-64 shrink-0 snap-start rounded-xl border p-3 ${statusColors[status].column} ${column.isShowingOldResults ? 'opacity-60' : ''}`}
+      className={`flex min-w-64 flex-1 snap-start flex-col rounded-xl border p-3 ${statusColors[status].column} ${column.isShowingOldResults ? 'opacity-60' : ''}`}
     >
       <div className="mb-3 flex items-center gap-2 px-1 py-2">
         <span
@@ -73,7 +73,7 @@ export function TaskColumn({ status, label }: TaskColumnProps) {
       {column.tasks.length ? (
         <ul
           aria-label={`${label} tasks`}
-          className="max-h-[65vh] space-y-3 overflow-y-auto p-1"
+          className="max-h-[65vh] space-y-3 overflow-y-auto p-1 lg:max-h-none lg:min-h-0 lg:flex-1"
         >
           {column.tasks.map((task) => (
             <TaskCard key={task.id} task={task} />
