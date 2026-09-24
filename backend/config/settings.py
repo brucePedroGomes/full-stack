@@ -1,6 +1,7 @@
 """Django settings loaded from environment variables."""
 
 import os
+from datetime import timedelta
 
 from config import common_settings
 from config.environment import Env
@@ -123,6 +124,11 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 # API
+SIMPLE_JWT = {
+    'SIGNING_KEY': env.DJANGO_JWT_SIGNING_KEY,
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+}
+
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',

@@ -1,8 +1,11 @@
+from datetime import timedelta
+
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.views.debug import SafeExceptionReporterFilter
+from rest_framework_simplejwt.tokens import AccessToken
 
 
 @override_settings(
@@ -63,6 +66,23 @@ class BrowserAuthenticationTests(TestCase):
         )
         self.assertEqual(self.client.get(reverse('users:me')).status_code, 200)
 
+    def test_session_renews_an_expired_access_token(self):
+        """An expired JWT stops API access but does not end the browser session."""
+        response = self.sign_in()
+        self.assertEqual(set(response.json()), {'access'})
+        expired = AccessToken(response.json()['access'])
+        expired.set_exp(lifetime=timedelta(seconds=-1))
+        self.client.defaults['HTTP_AUTHORIZATION'] = f'Bearer {expired}'
+        self.assertEqual(self.client.get(reverse('users:me')).status_code, 401)
+
+        renewed = self.client.post(
+            reverse('browser-token'), HTTP_X_CSRFTOKEN=self.csrf_token()
+        )
+        self.assertEqual(renewed.status_code, 200)
+        self.assertEqual(set(renewed.json()), {'access'})
+        self.client.defaults['HTTP_AUTHORIZATION'] = f'Bearer {renewed.json()["access"]}'
+        self.assertEqual(self.client.get(reverse('users:me')).status_code, 200)
+
     def test_login_response_prevents_caching(self):
         """Prevent browsers and proxies from storing the login token."""
         response = self.sign_in()
@@ -108,6 +128,20 @@ class BrowserAuthenticationTests(TestCase):
             ).status_code,
             401,
         )
+
+    def test_logout_does_not_revoke_an_issued_access_token(self):
+        """A copied JWT remains valid until its short expiry time."""
+        response = self.sign_in()
+        token = AccessToken(response.json()['access'])
+        self.assertEqual(
+            int(token['exp']) - int(token['iat']), timedelta(minutes=5).total_seconds()
+        )
+        logout = self.client.post(
+            reverse('browser-logout'), HTTP_X_CSRFTOKEN=self.csrf_token()
+        )
+        self.assertEqual(logout.status_code, 204)
+        self.client.defaults['HTTP_AUTHORIZATION'] = f'Bearer {token}'
+        self.assertEqual(self.client.get(reverse('users:me')).status_code, 200)
 
     def test_browser_auth_requires_csrf(self):
         """Reject browser login without the CSRF header."""

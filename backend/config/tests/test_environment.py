@@ -10,6 +10,7 @@ class EnvTests(TestCase):
         """Give each test its own fake environment."""
         self.values = {
             'DJANGO_SECRET_KEY': 'test-only-secret',
+            'DJANGO_JWT_SIGNING_KEY': 'test-only-jwt-signing-key-at-least-32-characters',
             'DJANGO_PASSWORD_PEPPER': 'ab' * 32,
             'DJANGO_EMAIL_HOST': 'smtp.example.com',
             'DJANGO_EMAIL_FROM': 'challenge@example.com',
@@ -173,6 +174,36 @@ class EnvTests(TestCase):
         del self.values['DJANGO_PASSWORD_PEPPER']
         with self.assertRaisesRegex(ValidationError, 'DJANGO_PASSWORD_PEPPER'):
             self._load_env()
+
+    def test_jwt_key_is_required(self):
+        """Do not fall back to Django's session signing key."""
+        del self.values['DJANGO_JWT_SIGNING_KEY']
+        with self.assertRaisesRegex(ValidationError, 'DJANGO_JWT_SIGNING_KEY'):
+            self._load_env()
+
+    def test_invalid_jwt_keys_are_rejected_without_exposing_them(self):
+        """Reject blank or short keys without printing secret values."""
+        for value in ('', ' ' * 32, 'private-short-key'):
+            with self.subTest(value=value):
+                self.values['DJANGO_JWT_SIGNING_KEY'] = value
+                with self.assertRaises(ValidationError) as error:
+                    self._load_env()
+                self.assertIn('DJANGO_JWT_SIGNING_KEY', str(error.exception))
+                if value.strip():
+                    self.assertNotIn(value, str(error.exception))
+
+    def test_jwt_key_cannot_reuse_other_secrets(self):
+        """Changing JWT keys must not require changing other secrets."""
+        self.values['DJANGO_SECRET_KEY'] = 'test-only-django-secret-at-least-32-characters'
+        for name in ('DJANGO_SECRET_KEY', 'DJANGO_PASSWORD_PEPPER'):
+            with self.subTest(setting=name):
+                self.values['DJANGO_JWT_SIGNING_KEY'] = self.values[name]
+                with self.assertRaisesRegex(ValidationError, 'must be different'):
+                    self._load_env()
+
+    def test_jwt_key_is_hidden_from_environment_repr(self):
+        """Do not include the JWT key when displaying settings."""
+        self.assertNotIn(self.values['DJANGO_JWT_SIGNING_KEY'], repr(self._load_env()))
 
     def test_invalid_pepper_is_rejected_without_exposing_it(self):
         """Reject invalid peppers without printing their values."""

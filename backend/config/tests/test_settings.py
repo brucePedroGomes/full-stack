@@ -1,5 +1,6 @@
 import os
 import runpy
+from datetime import timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -11,6 +12,7 @@ class SettingsTests(SimpleTestCase):
     def setUp(self):
         self.values = {
             'DJANGO_SECRET_KEY': 'test-only-secret',
+            'DJANGO_JWT_SIGNING_KEY': 'test-only-jwt-signing-key-at-least-32-characters',
             'DJANGO_PASSWORD_PEPPER': 'ab' * 32,
             'DJANGO_EMAIL_HOST': 'smtp.example.com',
             'DJANGO_EMAIL_FROM': 'challenge@example.com',
@@ -50,6 +52,16 @@ class SettingsTests(SimpleTestCase):
         self.assertEqual(settings['CELERY_BROKER_URL'], 'redis://localhost:6379/1')
         self.assertEqual(settings['CELERY_ACCEPT_CONTENT'], ['json'])
         self.assertTrue(settings['CELERY_TASK_IGNORE_RESULT'])
+
+    def test_jwt_uses_its_own_key_and_short_access_lifetime(self):
+        """Keep JWT signing separate from Django sessions."""
+        settings = self._load_settings()
+        self.assertEqual(
+            settings['SIMPLE_JWT']['SIGNING_KEY'], self.values['DJANGO_JWT_SIGNING_KEY']
+        )
+        self.assertEqual(
+            settings['SIMPLE_JWT']['ACCESS_TOKEN_LIFETIME'], timedelta(minutes=5)
+        )
 
     def test_development_uses_local_features(self):
         """Use explicit local HTTP settings, Redis, and console email."""

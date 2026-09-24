@@ -1,6 +1,7 @@
 import { chooseOption } from './support/select'
 import { expect, test } from './support/workspace'
 import { mockApi } from './support/mock-api'
+import type { Route } from '@playwright/test'
 
 test('signs in with CSRF protection and signs out', async ({ page }) => {
   /** Checks real Axios form encoding and browser-session headers. */
@@ -113,4 +114,33 @@ test('renews an expired access token and retries the write', async ({
   await expect(
     page.getByRole('heading', { name: 'Tasks', exact: true }),
   ).toBeVisible()
+})
+
+test('stays signed out when a pending renewal finishes late', async ({
+  page,
+  workspace,
+}) => {
+  await workspace.open()
+  let attempts = 0
+  await page.route('**/api/tasks/4/status/', (route) => {
+    attempts += 1
+    return route.fulfill({ status: 401 })
+  })
+  let holdRenewal!: (route: Route) => void
+  const renewalRequested = new Promise<Route>((resolve) => {
+    holdRenewal = resolve
+  })
+  await page.route('**/api/auth/browser/token/', holdRenewal)
+
+  await chooseOption(page, page.getByLabel('Status for Prepare report'), 'Done')
+  const renewal = await renewalRequested
+  await page.getByRole('button', { name: 'Sign out' }).click()
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
+
+  await renewal.fulfill({ json: { access: 'too-late' } })
+  await page.getByLabel('Username').fill('ana')
+
+  expect(attempts).toBe(1)
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Task board' })).toHaveCount(0)
 })

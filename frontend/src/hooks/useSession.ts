@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  clearSession,
   getAccount,
   sessionQuery,
   signIn,
@@ -15,6 +16,9 @@ export function useSession() {
 
   const endSession = useCallback(
     (message: string) => {
+      const current = client.getQueryData(sessionQuery.queryKey)
+      if (current) clearSession(current.session)
+      void client.cancelQueries({ queryKey: sessionQuery.queryKey })
       client.setQueryData(sessionQuery.queryKey, null)
       client.removeQueries({ queryKey: ['tasks'] })
       client.removeQueries({ queryKey: ['users'] })
@@ -35,7 +39,9 @@ export function useSession() {
   })
   const logout = useMutation({
     networkMode: 'always',
-    mutationFn: signOut,
+    mutationFn: async () => {
+      if (session.data) await signOut(session.data.session)
+    },
     onSuccess: () => endSession('You have signed out.'),
   })
 

@@ -1,8 +1,11 @@
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.test import override_settings
 from django.urls import reverse
 from rest_framework.test import APITestCase
+from rest_framework_simplejwt.backends import TokenBackend
+from rest_framework_simplejwt.tokens import AccessToken
 
 
 @override_settings(
@@ -83,4 +86,27 @@ class JWTAuthenticationTests(APITestCase):
     def test_session_login_does_not_authenticate_api(self):
         """Require JWT even when a Django session is active."""
         self.client.force_login(self.user)
+        for name in ('users:me', 'users:list', 'tasks:list'):
+            with self.subTest(endpoint=name):
+                self.assertEqual(self.client.get(reverse(name)).status_code, 401)
+
+    def test_django_secret_cannot_sign_api_tokens(self):
+        """Reject a valid token payload signed with the session key."""
+        token = AccessToken.for_user(self.user)
+        backend = TokenBackend(algorithm='HS256', signing_key=settings.SECRET_KEY)
+        wrong_signature = backend.encode(token.payload)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {wrong_signature}')
         self.assertEqual(self.client.get(reverse('users:me')).status_code, 401)
+
+    def test_token_pair_uses_the_separate_jwt_key(self):
+        """Both token types use the configured signing key."""
+        response = self.obtain_tokens()
+        self.assertEqual(response.status_code, 200)
+        backend = TokenBackend(
+            algorithm='HS256', signing_key=settings.SIMPLE_JWT['SIGNING_KEY']
+        )
+        for name in ('access', 'refresh'):
+            with self.subTest(token=name):
+                payload = backend.decode(response.data[name])
+                self.assertEqual(payload['user_id'], str(self.user.pk))
+                self.assertEqual(payload['token_type'], name)

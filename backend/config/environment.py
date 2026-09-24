@@ -15,6 +15,7 @@ class Env(BaseModel):
 
     # Django
     DJANGO_SECRET_KEY: str = Field(pattern=r'\S', repr=False)
+    DJANGO_JWT_SIGNING_KEY: str = Field(min_length=32, pattern=r'\S', repr=False)
     DJANGO_PASSWORD_PEPPER: str = Field(pattern=r'^[0-9a-fA-F]{64}$', repr=False)
     DJANGO_DEBUG: bool = False
     DJANGO_ALLOWED_HOSTS: Json[list[str]] = Field(default_factory=list)
@@ -67,6 +68,14 @@ class Env(BaseModel):
 
         if self.DJANGO_PASSWORD_PEPPER == self.DJANGO_SECRET_KEY:
             raise ValueError('DJANGO_PASSWORD_PEPPER must be different from DJANGO_SECRET_KEY.')
+
+        if self.DJANGO_JWT_SIGNING_KEY in (
+            self.DJANGO_SECRET_KEY, self.DJANGO_PASSWORD_PEPPER
+        ):
+            raise ValueError(
+                'DJANGO_JWT_SIGNING_KEY must be different from '
+                'DJANGO_SECRET_KEY and DJANGO_PASSWORD_PEPPER.'
+            )
 
         if self.DJANGO_ARGON2_MEMORY_COST < 8 * self.DJANGO_ARGON2_PARALLELISM:
             raise ValueError(

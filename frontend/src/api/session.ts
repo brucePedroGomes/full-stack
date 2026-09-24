@@ -8,6 +8,8 @@ const http = axios.create({ adapter: 'fetch', timeout: 10_000 })
 
 export type Account = UserSummary & { email: string }
 export type Session = { access: string }
+const renewals = new WeakMap<Session, Promise<void>>()
+
 export const credentialsSchema = z.object({
   username: z.string().trim().min(1, 'Enter your username.'),
   password: z.string().min(1, 'Enter your password.'),
@@ -28,7 +30,19 @@ export const sessionQuery = queryOptions({
   refetchOnWindowFocus: false,
 })
 
-export class SessionExpiredError extends Error {}
+export class SessionExpiredError extends Error {
+  constructor(message = 'Your session has expired. Please sign in again.') {
+    super(message)
+  }
+}
+
+export function clearSession(session: Session): void {
+  session.access = ''
+}
+
+function assertSessionActive(session: Session): void {
+  if (!session.access) throw new SessionExpiredError()
+}
 
 export function getApiErrorMessage(error: unknown): string {
   if (error instanceof SessionExpiredError) return error.message
@@ -96,21 +110,29 @@ export async function restoreSession(
   }
 }
 
-export async function signOut(): Promise<void> {
+export async function signOut(session: Session): Promise<void> {
   await browserPost('/api/auth/browser/logout/')
+  clearSession(session)
 }
 
-async function refreshAccess(
-  session: Session,
-  signal?: AbortSignal,
-): Promise<void> {
-  const refreshed = await restoreSession(signal)
-  if (!refreshed) {
-    throw new SessionExpiredError(
-      'Your session has expired. Please sign in again.',
-    )
-  }
-  session.access = refreshed.access
+function refreshAccess(session: Session): Promise<void> {
+  const pending = renewals.get(session)
+  if (pending) return pending
+
+  // One caller's cancellation must not cancel renewal for the others.
+  const renewal = restoreSession()
+    .then((refreshed) => {
+      if (!refreshed) {
+        clearSession(session)
+        throw new SessionExpiredError()
+      }
+      assertSessionActive(session)
+      session.access = refreshed.access
+    })
+    .finally(() => renewals.delete(session))
+
+  renewals.set(session, renewal)
+  return renewal
 }
 
 export async function requestWithSession<T = unknown>(
@@ -125,6 +147,8 @@ export async function requestWithSession<T = unknown>(
   } = {},
 ): Promise<T> {
   async function request(): Promise<T> {
+    signal?.throwIfAborted()
+    assertSessionActive(session)
     try {
       const response = await http.request<T>({
         url: path,
@@ -135,6 +159,8 @@ export async function requestWithSession<T = unknown>(
         headers: { Authorization: `Bearer ${session.access}` },
         signal,
       })
+      signal?.throwIfAborted()
+      assertSessionActive(session)
       return response.data
     } catch (error) {
       if (
@@ -147,20 +173,23 @@ export async function requestWithSession<T = unknown>(
     }
   }
 
+  const access = session.access
   try {
     return await request()
   } catch (error) {
     if (!isAxiosError(error) || error.response?.status !== 401) throw error
   }
 
-  await refreshAccess(session, signal ?? undefined)
+  signal?.throwIfAborted()
+  assertSessionActive(session)
+  // Another request may have renewed the token before this 401 arrived.
+  if (session.access === access) await refreshAccess(session)
   try {
     return await request()
   } catch (error) {
     if (isAxiosError(error) && error.response?.status === 401) {
-      throw new SessionExpiredError(
-        'Your session has expired. Please sign in again.',
-      )
+      clearSession(session)
+      throw new SessionExpiredError()
     }
     throw error
   }
