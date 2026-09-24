@@ -1,9 +1,15 @@
-"""Initialize OpenTelemetry after fork, before Django builds its middleware."""
+"""Serve 8 requests at once with 2 workers and 4 threads each.
+
+Initialize OpenTelemetry after fork, before Django builds its middleware.
+"""
 
 from opentelemetry.instrumentation.django import DjangoInstrumentor  # pyright: ignore[reportMissingTypeStubs]
 
 from config import telemetry
 from config.request_logging import log_response
+
+workers = 2
+threads = 4
 
 
 def post_fork(server, worker) -> None:
