@@ -6,9 +6,9 @@ from uuid import uuid4
 
 from opentelemetry import metrics, trace
 from opentelemetry._logs import get_logger_provider
-from opentelemetry.distro import OpenTelemetryConfigurator, OpenTelemetryDistro  # pyright: ignore[reportMissingTypeStubs]
-from opentelemetry.instrumentation.celery import CeleryInstrumentor  # pyright: ignore[reportMissingTypeStubs]
-from opentelemetry.instrumentation.logging.handler import LoggingHandler  # pyright: ignore[reportMissingTypeStubs]
+from opentelemetry.distro import OpenTelemetryConfigurator, OpenTelemetryDistro
+from opentelemetry.instrumentation.celery import CeleryInstrumentor
+from opentelemetry.instrumentation.logging.handler import LoggingHandler
 from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
 from opentelemetry.instrumentation.redis import RedisInstrumentor
 from opentelemetry.sdk._logs import LoggerProvider

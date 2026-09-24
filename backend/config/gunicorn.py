@@ -3,7 +3,7 @@
 Initialize OpenTelemetry after fork, before Django builds its middleware.
 """
 
-from opentelemetry.instrumentation.django import DjangoInstrumentor  # pyright: ignore[reportMissingTypeStubs]
+from opentelemetry.instrumentation.django import DjangoInstrumentor
 
 from config import telemetry
 from config.request_logging import log_response

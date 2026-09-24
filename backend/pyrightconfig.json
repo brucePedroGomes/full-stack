@@ -1,7 +1,7 @@
 {
-  "include": ["backend"],
-  "exclude": ["backend/**/migrations", "backend/.venv"],
-  "venvPath": "backend",
+  "include": ["."],
+  "exclude": ["**/migrations", ".venv"],
+  "venvPath": ".",
   "venv": ".venv",
   "pythonVersion": "3.14",
   "typeCheckingMode": "standard",
@@ -47,12 +47,13 @@
   "reportUntypedNamedTuple": "error",
   "executionEnvironments": [
     {
-      "root": "backend/config",
-      "extraPaths": ["backend"],
+      "root": "config",
+      "extraPaths": ["."],
       "strictListInference": false,
       "strictDictionaryInference": false,
       "strictSetInference": false,
       "reportMissingParameterType": "none",
+      "reportMissingTypeStubs": "none",
       "reportUnknownArgumentType": "none",
       "reportUnknownMemberType": "none",
       "reportUnknownParameterType": "none",
