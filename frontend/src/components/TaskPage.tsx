@@ -88,6 +88,7 @@ export function TaskPage({
       </div>
       <TaskFilters
         session={session}
+        filters={filters}
         onApply={handleApplyFilters}
         onSessionExpired={onSessionExpired}
       />

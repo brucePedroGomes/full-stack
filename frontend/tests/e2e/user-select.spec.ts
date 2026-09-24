@@ -36,7 +36,6 @@ test('selects users from every page with a normal dropdown', async ({
     `Person ${lastUser}`,
   )
   await page.getByLabel('Filter by assignee').selectOption(lastUser)
-  await page.getByRole('button', { name: 'Apply filters' }).click()
   await expect(
     page.getByRole('region', { name: 'Task board' }).getByRole('heading', { level: 3 }),
   ).toHaveText(['Assigned task'])

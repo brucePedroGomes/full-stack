@@ -2,7 +2,7 @@ import { makeTask, makeTasks } from '../support/fixtures'
 import { PAGE_SIZE } from '@/config'
 import { expect, test } from './support/workspace'
 
-test('sends filters to the server and resets pagination', async ({
+test('applies each filter automatically and resets pagination', async ({
   page,
   workspace,
 }) => {
@@ -25,16 +25,28 @@ test('sends filters to the server and resets pagination', async ({
   await expect(
     page.getByRole('heading', { name: 'Task 1', exact: true }),
   ).toBeVisible()
-  await page.getByLabel('Search tasks').fill('Find this')
+  await expect(page.getByRole('button', { name: 'Apply filters' })).toHaveCount(0)
   await page.getByLabel('Filter by status').selectOption('done')
-  await page.getByLabel('Filter by due date').fill('2026-10-10')
-  await page.getByLabel('Filter by assignee').selectOption('2')
-  const count = workspace.taskRequests.length
-  await page.getByRole('button', { name: 'Apply filters' }).click()
   await expect(
     page.getByRole('region', { name: 'Task board' }).getByRole('heading', { level: 3 }),
   ).toHaveText(['Find this report'])
-  expect(workspace.taskRequests).toHaveLength(count + 1)
+  await expect(page.getByRole('navigation', { name: 'Task pages' })).toContainText('Page 1')
+  expect(workspace.taskRequests.at(-1)?.searchParams.get('status')).toBe('done')
+  await page.getByLabel('Filter by due date').fill('2026-10-10')
+  await expect.poll(
+    () => workspace.taskRequests.at(-1)?.searchParams.get('due_date'),
+  ).toBe('2026-10-10')
+  await page.getByLabel('Filter by assignee').selectOption('2')
+  await expect.poll(
+    () => workspace.taskRequests.at(-1)?.searchParams.get('assigned_to'),
+  ).toBe('2')
+  await page.getByLabel('Search tasks').fill('Find this')
+  await expect.poll(
+    () => workspace.taskRequests.at(-1)?.searchParams.get('search'),
+  ).toBe('Find this')
+  await expect(
+    page.getByRole('region', { name: 'Task board' }).getByRole('heading', { level: 3 }),
+  ).toHaveText(['Find this report'])
   expect(
     Object.fromEntries(workspace.taskRequests.at(-1)!.searchParams),
   ).toMatchObject({
@@ -61,7 +73,6 @@ test('filters unassigned tasks and handles no results', async ({
   /** Sends the unassigned filter and shows an empty result clearly. */
   await workspace.open({ tasks: [makeTask({ assigned_to: 1 })] })
   await page.getByLabel('Filter by assignee').selectOption('unassigned')
-  await page.getByRole('button', { name: 'Apply filters' }).click()
   await expect(page.getByText('No tasks found.')).toBeVisible()
   expect(workspace.taskRequests.at(-1)?.searchParams.get('unassigned')).toBe(
     'true',

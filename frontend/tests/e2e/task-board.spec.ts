@@ -30,11 +30,9 @@ test('groups tasks by status and keeps all columns when filtered', async ({
     'Planned task',
   ])
   await page.getByLabel('Filter by status').selectOption('in_progress')
-  await page.getByRole('button', { name: 'Apply filters' }).click()
   await expect(board.getByRole('heading', { level: 3 })).toHaveCount(2)
   await expect(board.getByRole('heading', { level: 2 })).toHaveCount(5)
   await page.getByLabel('Search tasks').fill('No matching task')
-  await page.getByRole('button', { name: 'Apply filters' }).click()
   await expect(page.getByText('No tasks found.')).toBeVisible()
   await expect(board.getByRole('heading', { level: 2 })).toHaveCount(5)
   await expect(board.getByRole('heading', { level: 3 })).toHaveCount(0)
