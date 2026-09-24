@@ -44,6 +44,13 @@ class Task(models.Model):
 
     class Meta:
         ordering = ['id']
+        indexes = [
+            # Match the board's status filter and newest-change-first order.
+            models.Index(
+                fields=['status', '-updated_at', '-id'],
+                name='task_status_updated_id_idx',
+            ),
+        ]
         constraints = [
             models.CheckConstraint(
                 condition=Q(
