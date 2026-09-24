@@ -14,6 +14,7 @@ class EnvTests(TestCase):
             'DJANGO_EMAIL_HOST': 'smtp.example.com',
             'DJANGO_EMAIL_FROM': 'challenge@example.com',
             'DJANGO_CACHE_URL': 'redis://localhost:6379/0',
+            'CELERY_BROKER_URL': 'redis://localhost:6379/1',
             'DB_NAME': 'test',
             'DB_USER': 'test',
             'DB_PASSWORD': 'test',
@@ -48,6 +49,26 @@ class EnvTests(TestCase):
         self.values['DJANGO_NUM_PROXIES'] = '-1'
         with self.assertRaisesRegex(ImproperlyConfigured, 'DJANGO_NUM_PROXIES'):
             Env(self.values)
+
+    def test_production_requires_celery_broker(self):
+        """Require the Redis job queue outside local development."""
+        del self.values['CELERY_BROKER_URL']
+        with self.assertRaisesRegex(ImproperlyConfigured, 'CELERY_BROKER_URL'):
+            Env(self.values)
+
+    def test_celery_broker_must_use_redis(self):
+        """Reject blank and unsupported broker URLs."""
+        for value in ('', '   ', 'amqp://localhost', 'http://localhost:6379'):
+            with self.subTest(value=value):
+                self.values['CELERY_BROKER_URL'] = value
+                with self.assertRaisesRegex(ImproperlyConfigured, 'CELERY_BROKER_URL'):
+                    Env(self.values)
+
+    def test_debug_defaults_to_local_celery_broker(self):
+        """Use a separate local Redis database for queued jobs."""
+        self.values['DJANGO_DEBUG'] = 'true'
+        del self.values['CELERY_BROKER_URL']
+        self.assertEqual(Env(self.values).CELERY_BROKER_URL, 'redis://127.0.0.1:6379/1')
 
     def test_production_requires_email_host(self):
         """Require an SMTP host when debug is off."""

@@ -41,6 +41,13 @@ class Env:
             raise ImproperlyConfigured('DJANGO_CACHE_URL is required outside debug mode.')
         if self.CACHE_URL and not self.CACHE_URL.startswith(('redis://', 'rediss://')):
             raise ImproperlyConfigured('DJANGO_CACHE_URL must be a Redis URL.')
+        self.CELERY_BROKER_URL = self._values.get(
+            'CELERY_BROKER_URL', 'redis://127.0.0.1:6379/1' if self.DEBUG else ''
+        ).strip()
+        if not self.CELERY_BROKER_URL:
+            raise ImproperlyConfigured('CELERY_BROKER_URL is required.')
+        if not self.CELERY_BROKER_URL.startswith(('redis://', 'rediss://')):
+            raise ImproperlyConfigured('CELERY_BROKER_URL must be a Redis URL.')
         self.NUM_PROXIES = self._int('DJANGO_NUM_PROXIES', 0)
         if self.NUM_PROXIES < 0:
             raise ImproperlyConfigured('DJANGO_NUM_PROXIES cannot be negative.')

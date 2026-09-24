@@ -75,6 +75,22 @@ CACHES = {
     },
 }
 
+CELERY_BROKER_URL = env.CELERY_BROKER_URL
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    'socket_connect_timeout': 2,
+    'socket_timeout': 2,
+}
+CELERY_TASK_PUBLISH_RETRY_POLICY = {
+    'max_retries': 2,
+    'interval_start': 0,
+    'interval_step': 0.2,
+    'interval_max': 0.2,
+}
+
 if DEBUG:
     REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'].append(
         'rest_framework.renderers.BrowsableAPIRenderer'
@@ -197,6 +213,7 @@ else:
             'username': env.EMAIL_USERNAME,
             'password': env.EMAIL_PASSWORD,
             'use_tls': env.EMAIL_USE_TLS,
+            'timeout': 10,
         },
     }
 

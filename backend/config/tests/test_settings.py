@@ -14,6 +14,7 @@ class SettingsTests(SimpleTestCase):
             'DJANGO_EMAIL_HOST': 'smtp.example.com',
             'DJANGO_EMAIL_FROM': 'challenge@example.com',
             'DJANGO_CACHE_URL': 'redis://localhost:6379/0',
+            'CELERY_BROKER_URL': 'redis://localhost:6379/1',
             'DJANGO_ARGON2_TIME_COST': '3',
             'DJANGO_ARGON2_MEMORY_COST': '65536',
             'DJANGO_ARGON2_PARALLELISM': '4',
@@ -45,6 +46,9 @@ class SettingsTests(SimpleTestCase):
         self.assertEqual(settings['STATIC_ROOT'], settings['BASE_DIR'] / 'staticfiles')
         self.assertEqual(settings['CACHES']['default']['LOCATION'], 'redis://localhost:6379/0')
         self.assertEqual(settings['REST_FRAMEWORK']['NUM_PROXIES'], 0)
+        self.assertEqual(settings['CELERY_BROKER_URL'], 'redis://localhost:6379/1')
+        self.assertEqual(settings['CELERY_ACCEPT_CONTENT'], ['json'])
+        self.assertTrue(settings['CELERY_TASK_IGNORE_RESULT'])
 
     def test_development_uses_local_features(self):
         """Allow local HTTP, browsable API, and console email in debug."""
@@ -89,6 +93,7 @@ class SettingsTests(SimpleTestCase):
             settings['MAILERS']['default']['OPTIONS']['host'], 'smtp.example.com'
         )
         self.assertEqual(settings['DEFAULT_FROM_EMAIL'], 'challenge@example.com')
+        self.assertEqual(settings['MAILERS']['default']['OPTIONS']['timeout'], 10)
 
     def test_staging_can_enable_docs_without_debug(self):
         """Allow Swagger in staging while keeping production renderers."""

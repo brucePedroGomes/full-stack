@@ -12,10 +12,12 @@ dependencies = [
     "drf-spectacular[sidecar]>=0.30,<0.31",
     "whitenoise>=6.12,<7",
     "redis>=6,<7",
+    "celery[redis]>=5.6,<6",
 ]
 
 [dependency-groups]
 dev = [
+    "celery-types>=0.26",
     "djangorestframework-stubs>=3.18.1",
     "pyright>=1.1.414",
 ]
