@@ -144,3 +144,24 @@ test('stays signed out when a pending renewal finishes late', async ({
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Task board' })).toHaveCount(0)
 })
+
+test('shows the wait time after too many sign-in tries', async ({ page }) => {
+  /** The backend message tells the user how long to wait. */
+  await mockApi(page)
+  await page.route('**/api/auth/browser/token/', (route) =>
+    route.fulfill({ status: 401 }),
+  )
+  await page.route('**/api/auth/browser/login/', (route) =>
+    route.fulfill({
+      status: 429,
+      json: { detail: 'Too many tries. Please wait 42 seconds and try again.' },
+    }),
+  )
+  await page.goto('/')
+  await page.getByLabel('Username').fill('ana')
+  await page.getByLabel('Password').fill('wrong')
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+  await expect(page.getByRole('alert')).toHaveText(
+    'Too many tries. Please wait 42 seconds and try again.',
+  )
+})

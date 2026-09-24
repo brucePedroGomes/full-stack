@@ -11,12 +11,14 @@ from .tasks import send_assignment_email
 
 class TaskSerializer(serializers.ModelSerializer[Task]):
     assignee = UserSummarySerializer(source='assigned_to', read_only=True)
+    is_overdue = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Task
         fields = [
             'id', 'title', 'description', 'due_date', 'status',
             'created_by', 'assigned_to', 'assignee', 'created_at', 'updated_at',
+            'is_overdue',
         ]
         read_only_fields = ['id', 'status', 'created_by', 'created_at', 'updated_at']
 
@@ -41,6 +43,11 @@ class TaskSerializer(serializers.ModelSerializer[Task]):
             transaction.on_commit(partial(
                 send_assignment_email.delay, task.pk, task.assigned_to.pk,
             ))
+
+
+class TaskCreateSerializer(TaskSerializer):
+    class Meta(TaskSerializer.Meta):
+        read_only_fields = ['id', 'created_by', 'created_at', 'updated_at']
 
 
 class TaskStatusSerializer(serializers.ModelSerializer[Task]):

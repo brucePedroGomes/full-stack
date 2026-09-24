@@ -1,5 +1,4 @@
 import { expect, test, vi } from 'vitest'
-import { PAGE_SIZE } from '@/config'
 import { requestWithSession } from '@/api/session'
 import {
   deleteTask,
@@ -26,7 +25,7 @@ test('validates calendar dates and preserves an empty deadline', () => {
   expect(taskInputSchema.parse({ ...values, due_date: '' }).due_date).toBeNull()
 })
 
-test('loads only the requested page and keeps the backend count', async () => {
+test('loads one page of one column and keeps the backend count', async () => {
   /** Checks that a next URL does not start another request. */
   const signal = new AbortController().signal
   const session = { access: 'test-access' }
@@ -39,7 +38,8 @@ test('loads only the requested page and keeps the backend count', async () => {
 
   const page = await getTasks(
     session,
-    { status: 'planned', assignee: 'all', search: '', due_date: '' },
+    { assignee: 'all', search: '', due: 'all' },
+    'planned',
     1,
     signal,
   )
@@ -47,13 +47,13 @@ test('loads only the requested page and keeps the backend count', async () => {
   expect(page.count).toBe(2000)
   expect(page.results).toEqual(results)
   expect(requestWithSession).toHaveBeenCalledExactlyOnceWith(
-    `/api/tasks/?page=1&page_size=${PAGE_SIZE}&ordering=-id&status=planned`,
+    '/api/tasks/?page=1&status=planned',
     session,
     { signal },
   )
 })
 
-test('sends status, search, and assignee filters on later pages', async () => {
+test('sends search and assignee filters on later pages', async () => {
   /** Keeps pagination and filtering on the same local endpoint. */
   vi.mocked(requestWithSession).mockResolvedValue({
     count: 26,
@@ -62,24 +62,18 @@ test('sends status, search, and assignee filters on later pages', async () => {
   })
   await getTasks(
     { access: 'test-access' },
-    {
-      status: 'planned',
-      assignee: 7,
-      search: 'report & notes',
-      due_date: '2026-10-10',
-    },
+    { assignee: 7, search: 'report & notes', due: 'overdue' },
+    'blocked',
     2,
   )
   const path = vi.mocked(requestWithSession).mock.calls[0][0]
   const params = new URL(path, 'http://localhost').searchParams
   expect(Object.fromEntries(params)).toEqual({
     page: '2',
-    page_size: String(PAGE_SIZE),
-    ordering: '-id',
-    status: 'planned',
+    status: 'blocked',
     assigned_to: '7',
     search: 'report & notes',
-    due_date: '2026-10-10',
+    due: 'overdue',
   })
 })
 

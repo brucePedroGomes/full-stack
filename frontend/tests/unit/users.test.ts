@@ -1,4 +1,5 @@
 import { expect, test, vi } from 'vitest'
+import { USER_PAGE_SIZE } from '@/config'
 import { getUsers } from '@/api/users'
 import { requestWithSession } from '@/api/session'
 import { makeUser } from '../support/fixtures'
@@ -8,7 +9,7 @@ vi.mock('@/api/session', async (importOriginal) => ({
   requestWithSession: vi.fn(),
 }))
 
-test('requests 20 users once and does not follow the next page', async () => {
+test('requests one page of users and does not follow the next page', async () => {
   const signal = new AbortController().signal
   const session = { access: 'test-access' }
   const users = [makeUser()]
@@ -20,7 +21,7 @@ test('requests 20 users once and does not follow the next page', async () => {
 
   await expect(getUsers(session, signal)).resolves.toEqual(users)
   expect(requestWithSession).toHaveBeenCalledExactlyOnceWith(
-    '/api/users/?page=1&page_size=20',
+    `/api/users/?page=1&page_size=${USER_PAGE_SIZE}`,
     session,
     { signal },
   )

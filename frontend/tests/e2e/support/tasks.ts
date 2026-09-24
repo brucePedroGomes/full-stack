@@ -12,8 +12,7 @@ function matchesFilters(task: Task, params: URLSearchParams): boolean {
   if (params.get('unassigned') === 'true' && task.assigned_to !== null)
     return false
   if (params.has('status') && task.status !== params.get('status')) return false
-  if (params.has('due_date') && task.due_date !== params.get('due_date'))
-    return false
+  if (params.get('due') === 'overdue' && !task.is_overdue) return false
   const terms = (params.get('search') ?? '').toLowerCase().split(/\s+/)
   const text = `${task.title} ${task.description}`.toLowerCase()
   return terms.every((term) => text.includes(term))
@@ -29,6 +28,14 @@ export function createTaskHandler(initialTasks: Task[], users: UserSummary[]) {
     assignee: findAssignee(task.assigned_to),
   }))
   let nextId = Math.max(0, ...tasks.map((task) => task.id)) + 1
+  let clock = nextId
+  const updatedAt = new Map(tasks.map((task) => [task.id, task.id]))
+  function touch(task: Task): void {
+    updatedAt.set(task.id, clock++)
+  }
+  function lastChange(task: Task): number {
+    return updatedAt.get(task.id) ?? 0
+  }
 
   return async function handleTasks(route: Route): Promise<void> {
     const request = route.request()
@@ -38,23 +45,21 @@ export function createTaskHandler(initialTasks: Task[], users: UserSummary[]) {
     if (url.pathname === '/api/tasks/' && method === 'GET') {
       const matches = tasks
         .filter((task) => matchesFilters(task, url.searchParams))
-        .sort((a, b) =>
-          url.searchParams.get('ordering') === '-id'
-            ? b.id - a.id
-            : a.id - b.id,
-        )
-      await route.fulfill({ json: paginate(matches, url, 10) })
+        .sort((a, b) => lastChange(b) - lastChange(a) || b.id - a.id)
+      await route.fulfill({ json: paginate(matches, url, 20) })
       return
     }
     if (url.pathname === '/api/tasks/' && method === 'POST') {
-      const values: TaskInput = request.postDataJSON()
+      const values: TaskInput & { status?: TaskStatus } = request.postDataJSON()
       const task: Task = {
         ...values,
         id: nextId++,
-        status: 'planned',
+        status: values.status ?? 'planned',
         assignee: findAssignee(values.assigned_to),
+        is_overdue: false,
       }
       tasks.push(task)
+      touch(task)
       await route.fulfill({ status: 201, json: task })
       return
     }
@@ -68,6 +73,7 @@ export function createTaskHandler(initialTasks: Task[], users: UserSummary[]) {
     if (method === 'PATCH' && url.pathname.endsWith('/status/')) {
       const body: { status: TaskStatus } = request.postDataJSON()
       task.status = body.status
+      touch(task)
       await route.fulfill({ json: { status: task.status } })
       return
     }
@@ -76,6 +82,7 @@ export function createTaskHandler(initialTasks: Task[], users: UserSummary[]) {
       Object.assign(task, values, {
         assignee: findAssignee(values.assigned_to),
       })
+      touch(task)
       await route.fulfill({ json: task })
       return
     }

@@ -66,28 +66,18 @@ test('applies selections immediately and keeps them when search finishes', () =>
   fireEvent.change(screen.getByLabelText('Search tasks'), {
     target: { value: 'report' },
   })
-  chooseOption('Filter by status', 'Done')
-  expect(onApply).toHaveBeenLastCalledWith({ ...defaultFilters, status: 'done' })
-  fireEvent.change(screen.getByLabelText('Filter by due date'), {
-    target: { value: '2026-10-10' },
-  })
-  expect(onApply).toHaveBeenLastCalledWith({
-    ...defaultFilters,
-    status: 'done',
-    due_date: '2026-10-10',
-  })
+  chooseOption('Filter by due date', 'Overdue')
+  expect(onApply).toHaveBeenLastCalledWith({ ...defaultFilters, due: 'overdue' })
   chooseOption('Filter by assignee', 'Bruno Costa')
   expect(onApply).toHaveBeenLastCalledWith({
     ...defaultFilters,
-    status: 'done',
-    due_date: '2026-10-10',
+    due: 'overdue',
     assignee: 2,
   })
   act(() => vi.advanceTimersByTime(500))
   expect(onApply).toHaveBeenLastCalledWith({
     search: 'report',
-    status: 'done',
-    due_date: '2026-10-10',
+    due: 'overdue',
     assignee: 2,
   })
 })
@@ -99,10 +89,7 @@ test('reset clears all controls and cancels a pending search', () => {
     target: { value: 'applied search' },
   })
   act(() => vi.advanceTimersByTime(500))
-  chooseOption('Filter by status', 'Blocked')
-  fireEvent.change(screen.getByLabelText('Filter by due date'), {
-    target: { value: '2026-10-10' },
-  })
+  chooseOption('Filter by due date', 'Due in the next 7 days')
   chooseOption('Filter by assignee', 'Bruno Costa')
   fireEvent.change(screen.getByLabelText('Search tasks'), {
     target: { value: 'old search' },
@@ -111,8 +98,7 @@ test('reset clears all controls and cancels a pending search', () => {
   onApply.mockClear()
   fireEvent.click(screen.getByRole('button', { name: 'Reset' }))
   expect(screen.getByLabelText('Search tasks')).toHaveValue('')
-  expect(screen.getByLabelText('Filter by status')).toHaveTextContent('All statuses')
-  expect(screen.getByLabelText('Filter by due date')).toHaveValue('')
+  expect(screen.getByLabelText('Filter by due date')).toHaveTextContent('Any due date')
   expect(screen.getByLabelText('Filter by assignee')).toHaveTextContent('All assignees')
   act(() => vi.advanceTimersByTime(500))
   expect(onApply).toHaveBeenCalledExactlyOnceWith(defaultFilters)

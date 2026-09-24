@@ -46,10 +46,13 @@ function assertSessionActive(session: Session): void {
 
 export function getApiErrorMessage(error: unknown): string {
   if (error instanceof SessionExpiredError) return error.message
-  if (isAxiosError(error)) {
-    return error.response
-      ? 'The server could not finish the request. Please try again.'
-      : 'Cannot reach the server. Please check that Django is running.'
+  if (isAxiosError<{ detail?: unknown }>(error)) {
+    if (!error.response)
+      return 'Cannot reach the server. Please check your connection and try again.'
+    const detail = error.response.data?.detail
+    return typeof detail === 'string'
+      ? detail
+      : 'The server could not finish the request. Please try again.'
   }
   if (error instanceof Error) return error.message
   return 'Something went wrong. Please try again.'

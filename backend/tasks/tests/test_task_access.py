@@ -22,7 +22,7 @@ class TaskAccessTests(APITestCase):
 
         self.assertEqual(
             [item['id'] for item in response.data['results']],
-            [first.pk, second.pk],
+            [second.pk, first.pk],
         )
 
     def test_teammate_can_read_task(self):

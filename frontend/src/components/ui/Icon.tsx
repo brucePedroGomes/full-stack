@@ -1,6 +1,4 @@
 import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
   PencilSquareIcon,
   PlusIcon,
   TrashIcon,
@@ -9,8 +7,6 @@ import { CheckIcon, ChevronDownIcon } from '@heroicons/react/20/solid'
 import type { ComponentPropsWithRef } from 'react'
 
 const icons = {
-  previous: ChevronLeftIcon,
-  next: ChevronRightIcon,
   edit: PencilSquareIcon,
   add: PlusIcon,
   delete: TrashIcon,

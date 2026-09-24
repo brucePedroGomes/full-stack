@@ -3,7 +3,7 @@ import { USER_PAGE_SIZE } from '@/config'
 import { makeTask, makeUser } from '../support/fixtures'
 import { expect, test } from './support/workspace'
 
-test('shares 20 users between tasks and filters and keeps an existing assignee', async ({
+test('shares one user list between tasks and filters and keeps an existing assignee', async ({
   page,
   workspace,
 }) => {
@@ -22,7 +22,7 @@ test('shares 20 users between tasks and filters and keeps an existing assignee',
   const lastUser = String(USER_PAGE_SIZE)
   await expect.poll(() => workspace.userRequests.length).toBe(1)
   expect(workspace.userRequests[0].searchParams.get('page')).toBe('1')
-  expect(workspace.userRequests[0].searchParams.get('page_size')).toBe('20')
+  expect(workspace.userRequests[0].searchParams.get('page_size')).toBe(String(USER_PAGE_SIZE))
   await page.getByRole('button', { name: 'Edit Prepare report' }).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByLabel('Assigned to')).toHaveText(`Person ${USER_PAGE_SIZE + 1}`)

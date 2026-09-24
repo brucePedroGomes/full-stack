@@ -68,9 +68,13 @@ test('creates, edits, and deletes a task', async ({ page, workspace }) => {
     .getByRole('alertdialog')
     .getByRole('button', { name: 'Delete', exact: true })
     .click()
-  await expect(page.getByText('No tasks found.')).toBeVisible()
+  await expect(
+    page.getByRole('region', { name: 'Task board' }).getByText('No tasks', { exact: true }),
+  ).toHaveCount(5)
   await page.reload()
-  await expect(page.getByText('No tasks found.')).toBeVisible()
+  await expect(
+    page.getByRole('region', { name: 'Task board' }).getByText('No tasks', { exact: true }),
+  ).toHaveCount(5)
 })
 
 test('cancels deletion and can retry a failed confirmation', async ({ page, workspace }) => {
@@ -144,6 +148,7 @@ test('keeps form values when the backend rejects a task', async ({
   await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue(
     'Rejected title',
   )
+  page.once('dialog', (question) => void question.accept())
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
   await expect(
@@ -179,4 +184,19 @@ test('saves a status change and keeps the saved status after a failure', async (
   await expect(
     page.getByRole('region', { name: 'Blocked', exact: true }).getByRole('heading', { level: 3 }),
   ).toHaveCount(0)
+})
+
+test('asks before closing a changed form', async ({ page, workspace }) => {
+  /** Escape or Cancel must not lose typed text by mistake. */
+  await workspace.open()
+  await page.getByRole('button', { name: 'Edit Prepare report' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Title', { exact: true }).fill('Half-written title')
+  page.once('dialog', (question) => void question.dismiss())
+  await page.keyboard.press('Escape')
+  await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue('Half-written title')
+  page.once('dialog', (question) => void question.accept())
+  await dialog.getByRole('button', { name: 'Cancel' }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Prepare report' })).toBeVisible()
 })

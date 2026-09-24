@@ -1,6 +1,8 @@
-from datetime import date
+from datetime import date, timedelta
 
 from django import forms
+from django.db.models import QuerySet
+from django.utils import timezone
 from django_filters import rest_framework as filters
 
 from .models import Task
@@ -29,8 +31,18 @@ class TaskFilter(filters.FilterSet):
     unassigned = filters.BooleanFilter(field_name='assigned_to', lookup_expr='isnull')
     due_after = filters.DateFilter(field_name='due_date', lookup_expr='gte')
     due_before = filters.DateFilter(field_name='due_date', lookup_expr='lte')
+    due = filters.ChoiceFilter(
+        choices=[('overdue', 'Overdue'), ('next7', 'Next 7 days')],
+        method='filter_due',
+    )
 
     class Meta:
         model = Task
         fields = ['status', 'due_date', 'assigned_to']
         form = TaskFilterForm
+
+    def filter_due(self, queryset: QuerySet[Task], name: str, value: str) -> QuerySet[Task]:
+        today = timezone.localdate()
+        if value == 'overdue':
+            return queryset.filter(due_date__lt=today).exclude(status=Task.Status.DONE)
+        return queryset.filter(due_date__range=(today, today + timedelta(days=6)))

@@ -57,3 +57,17 @@ test('keeps keyboard focus inside the dialog', async ({ page, workspace }) => {
   await expect(dialog).toHaveCount(0)
   await expect(opener).toBeFocused()
 })
+
+test('swipes between columns on a phone', async ({ page, workspace }) => {
+  /** The board scrolls sideways inside itself; the page does not. */
+  await page.setViewportSize({ width: 375, height: 667 })
+  await workspace.open({ tasks: [makeTask({ status: 'done', title: 'Finished task' })] })
+  const board = page.getByRole('region', { name: 'Task board' })
+  expect(await board.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true)
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+  ).toBe(true)
+  const done = board.getByRole('region', { name: 'Done', exact: true })
+  await done.scrollIntoViewIfNeeded()
+  await expect(done.getByRole('heading', { name: 'Finished task' })).toBeInViewport()
+})

@@ -23,10 +23,12 @@ def auth_throttle_response(request: HttpRequest, view: View) -> JsonResponse | N
     throttle = ScopedRateThrottle()
     if throttle.allow_request(cast(Request, request), cast(APIView, view)):
         return None
-    response = JsonResponse({'detail': 'Request was throttled.'}, status=429)
-    wait = throttle.wait()
-    if wait:
-        response['Retry-After'] = str(ceil(wait))
+    seconds = ceil(throttle.wait() or 0)
+    response = JsonResponse(
+        {'detail': f'Too many tries. Please wait {seconds} seconds and try again.'},
+        status=429,
+    )
+    response['Retry-After'] = str(seconds)
     return response
 
 

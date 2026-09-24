@@ -1,15 +1,16 @@
-import { useEffect, useState, type ChangeEvent, type SubmitEvent } from 'react'
+import { useEffect, useState, type SubmitEvent } from 'react'
 import { getApiErrorMessage } from '@/api/session'
-import { taskStatuses, type TaskFilters as Filters } from '@/api/tasks'
+import type { DueFilter, TaskFilters as Filters } from '@/api/tasks'
 import { useTaskContext } from '@/contexts/TaskContext'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useUserOptions } from '@/hooks/useUserOptions'
 import { Button, Input, Select, type SelectOption } from './ui'
 
-const statusOptions = [
-  { value: 'all', label: 'All statuses' },
-  ...taskStatuses,
-] as const
+const dueOptions: SelectOption<DueFilter>[] = [
+  { value: 'all', label: 'Any due date' },
+  { value: 'overdue', label: 'Overdue' },
+  { value: 'next7', label: 'Due in the next 7 days' },
+]
 
 export function TaskFilters() {
   const { filters, updateFilters, resetFilters } = useTaskContext()
@@ -32,12 +33,6 @@ export function TaskFilters() {
     }
   }, [search, debouncedSearch, filters.search, updateFilters])
 
-  function changeDueDate(event: ChangeEvent<HTMLInputElement>) {
-    if (event.currentTarget.validity.valid) {
-      updateFilters({ due_date: event.currentTarget.value })
-    }
-  }
-
   function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
     if (search.trim() !== filters.search) {
@@ -53,7 +48,7 @@ export function TaskFilters() {
   return (
     <form
       aria-label="Task filters"
-      className="grid gap-4 rounded border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4"
+      className="grid gap-4 rounded border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-3"
       onSubmit={submit}
       onReset={reset}
     >
@@ -66,19 +61,10 @@ export function TaskFilters() {
         placeholder="Title or description"
       />
       <Select
-        label="Filter by status"
-        name="status"
-        value={filters.status}
-        onChange={(status) => updateFilters({ status })}
-        options={statusOptions}
-      />
-      <Input
         label="Filter by due date"
-        name="due_date"
-        type="date"
-        max="9999-12-31"
-        value={filters.due_date}
-        onChange={changeDueDate}
+        value={filters.due}
+        onChange={(due) => updateFilters({ due })}
+        options={dueOptions}
       />
       <div className="min-w-0 space-y-2">
         <Select
@@ -101,7 +87,7 @@ export function TaskFilters() {
           </div>
         ) : null}
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-3 sm:col-span-2 lg:col-span-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:col-span-2 lg:col-span-3">
         <p className="text-sm text-gray-600">Filters update automatically.</p>
         <Button type="reset">Reset</Button>
       </div>

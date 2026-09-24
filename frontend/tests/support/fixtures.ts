@@ -11,6 +11,7 @@ export function makeTask(overrides: Partial<Task> = {}): Task {
     due_date: '2026-10-10',
     assigned_to: null,
     assignee: null,
+    is_overdue: false,
     ...overrides,
   }
 }

@@ -1,8 +1,9 @@
-from datetime import date
+from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from tasks.models import Task
@@ -53,6 +54,73 @@ class TaskFilterTests(APITestCase):
             [task['title'] for task in response.data['results']], ['Today']
         )
 
+    def test_orders_by_last_change(self):
+        """Put the task that changed last first, like a card that just moved."""
+        moved = Task.objects.create(title='Moved', created_by=self.user)
+        Task.objects.create(title='Newer', created_by=self.user)
+
+        self.client.patch(
+            reverse('tasks:status', args=[moved.pk]),
+            {'status': Task.Status.DONE},
+            format='json',
+        )
+        response = self.client.get(
+            reverse('tasks:list'), {'ordering': '-updated_at,-id'}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [task['title'] for task in response.data['results']],
+            ['Moved', 'Newer'],
+        )
+
+    def test_lists_the_last_changed_task_first(self):
+        """Sort by last change when the client sends no ordering."""
+        Task.objects.create(title='First', created_by=self.user)
+        second = Task.objects.create(title='Second', created_by=self.user)
+        Task.objects.create(title='Third', created_by=self.user)
+
+        self.client.patch(
+            reverse('tasks:status', args=[second.pk]),
+            {'status': Task.Status.DONE},
+            format='json',
+        )
+        response = self.client.get(reverse('tasks:list'))
+
+        self.assertEqual(
+            [task['title'] for task in response.data['results']],
+            ['Second', 'Third', 'First'],
+        )
+
+    def test_filters_overdue_tasks(self):
+        """Find late tasks that are not done."""
+        today = timezone.localdate()
+        yesterday = today - timedelta(days=1)
+        Task.objects.create(title='Late', created_by=self.user, due_date=yesterday)
+        Task.objects.create(
+            title='Finished', created_by=self.user,
+            due_date=yesterday, status=Task.Status.DONE,
+        )
+        Task.objects.create(title='Due today', created_by=self.user, due_date=today)
+
+        response = self.client.get(reverse('tasks:list'), {'due': 'overdue'})
+
+        self.assertEqual([task['title'] for task in response.data['results']], ['Late'])
+
+    def test_filters_tasks_due_in_the_next_seven_days(self):
+        """Include today and the next six days."""
+        today = timezone.localdate()
+        for title, days in (('Yesterday', -1), ('Today', 0), ('Day 6', 6), ('Day 7', 7)):
+            Task.objects.create(
+                title=title, created_by=self.user, due_date=today + timedelta(days=days)
+            )
+
+        response = self.client.get(reverse('tasks:list'), {'due': 'next7'})
+
+        self.assertEqual(
+            {task['title'] for task in response.data['results']}, {'Today', 'Day 6'}
+        )
+
     def test_rejects_invalid_filters(self):
         """Reject invalid or blank task filters."""
         url = reverse('tasks:list')
@@ -66,6 +134,7 @@ class TaskFilterTests(APITestCase):
             {'assigned_to': ''},
             {'assigned_to': 'not-a-user'},
             {'assigned_to': 999999},
+            {'due': 'someday'},
         )
 
         for filters in invalid_filters:

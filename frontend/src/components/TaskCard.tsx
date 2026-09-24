@@ -1,5 +1,6 @@
 import { taskStatuses, type Task } from '@/api/tasks'
 import { getUserName } from '@/api/users'
+import { TASK_DRAG_TYPE } from '@/config'
 import { useTaskContext } from '@/contexts/TaskContext'
 import { Button, Icon, Select } from './ui'
 
@@ -8,10 +9,17 @@ type TaskCardProps = {
 }
 
 export function TaskCard({ task }: TaskCardProps) {
-  const { status, editTask } = useTaskContext()
+  const { moveTask, editTask, movingTaskIds } = useTaskContext()
+  const moving = movingTaskIds.includes(task.id)
 
   return (
-    <li className="min-w-0 space-y-3 rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+    <li
+      draggable={!moving}
+      onDragStart={(event) =>
+        event.dataTransfer.setData(TASK_DRAG_TYPE, JSON.stringify(task))
+      }
+      className="min-w-0 space-y-3 rounded-lg border border-gray-200 bg-white p-3 shadow-sm"
+    >
       <div className="flex items-start gap-2">
         <h3 className="min-w-0 flex-1 py-2 font-semibold wrap-anywhere">
           {task.title}
@@ -21,7 +29,6 @@ export function TaskCard({ task }: TaskCardProps) {
           variant="icon"
           aria-label={`Edit ${task.title}`}
           onClick={() => editTask(task)}
-          disabled={status.isPending}
         >
           <Icon name="edit" />
         </Button>
@@ -40,15 +47,17 @@ export function TaskCard({ task }: TaskCardProps) {
         ) : (
           'No due date'
         )}
+        {task.is_overdue ? <strong className="text-red-700"> · Overdue</strong> : null}
       </p>
       <Select
         aria-label={`Status for ${task.title}`}
         value={task.status}
-        disabled={status.isPending}
-        onChange={(value) => status.mutate({ id: task.id, value })}
+        disabled={moving}
+        onChange={(value) => moveTask(task, value)}
         options={taskStatuses}
         className="text-sm"
       />
+      {moving ? <p className="text-sm text-gray-600">Moving...</p> : null}
     </li>
   )
 }

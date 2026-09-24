@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
 
 
 class Task(models.Model):
@@ -54,3 +55,11 @@ class Task(models.Model):
 
     def __str__(self) -> str:
         return self.title
+
+    @property
+    def is_overdue(self) -> bool:
+        return (
+            self.due_date is not None
+            and self.due_date < timezone.localdate()
+            and self.status != self.Status.DONE
+        )

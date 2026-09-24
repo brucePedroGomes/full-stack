@@ -14,20 +14,20 @@ class TaskPaginationTests(APITestCase):
         self.user = get_user_model().objects.create(username='ana')
         self.client.force_authenticate(user=self.user)
 
-    def test_lists_ten_tasks_per_page_by_default(self):
-        """Return ten tasks on the first page."""
+    def test_lists_twenty_tasks_per_page_by_default(self):
+        """Return twenty tasks on the first page."""
         Task.objects.bulk_create([
             Task(title=f'Task {number}', created_by=self.user)
-            for number in range(21)
+            for number in range(41)
         ])
 
         first_page = self.client.get(reverse('tasks:list')).data
         second_page = self.client.get(first_page['next']).data
         third_page = self.client.get(second_page['next']).data
 
-        self.assertEqual(first_page['count'], 21)
-        self.assertEqual(len(first_page['results']), 10)
-        self.assertEqual(len(second_page['results']), 10)
+        self.assertEqual(first_page['count'], 41)
+        self.assertEqual(len(first_page['results']), 20)
+        self.assertEqual(len(second_page['results']), 20)
         self.assertEqual(len(third_page['results']), 1)
         self.assertIsNone(third_page['next'])
 
@@ -50,6 +50,6 @@ class TaskPaginationTests(APITestCase):
         second_page = self.client.get(first_page['next']).data
 
         self.assertEqual(first_page['count'], 2)
-        self.assertEqual(first_page['results'][0]['title'], 'First')
-        self.assertEqual(second_page['results'][0]['title'], 'Second')
+        self.assertEqual(first_page['results'][0]['title'], 'Second')
+        self.assertEqual(second_page['results'][0]['title'], 'First')
         self.assertIsNone(second_page['next'])

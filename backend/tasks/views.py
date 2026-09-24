@@ -7,17 +7,18 @@ from rest_framework.serializers import BaseSerializer
 from .filters import TaskFilter
 from .models import Task
 from .pagination import TaskPagination
-from .serializers import TaskSerializer, TaskStatusSerializer
+from .serializers import TaskCreateSerializer, TaskSerializer, TaskStatusSerializer
 
 
 class TaskListCreateView(generics.ListCreateAPIView[Task]):
     queryset = Task.objects.select_related('assigned_to')
-    serializer_class = TaskSerializer
+    serializer_class = TaskCreateSerializer
     pagination_class = TaskPagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = TaskFilter
     search_fields = ['title', 'description']
-    ordering_fields = ['id']
+    ordering_fields = ['id', 'updated_at']
+    ordering = ['-updated_at', '-id']
 
     def perform_create[ModelT: Model](
         self, serializer: BaseSerializer[ModelT]

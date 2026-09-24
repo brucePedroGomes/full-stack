@@ -2,6 +2,7 @@ import { AxiosError, AxiosHeaders } from 'axios'
 import Cookies from 'js-cookie'
 import { beforeEach, expect, test, vi } from 'vitest'
 import {
+  getApiErrorMessage,
   requestWithSession,
   SessionExpiredError,
   signOut,
@@ -18,11 +19,11 @@ vi.mock('axios', async (importOriginal) => {
   return { ...actual, default: { ...actual.default, create: () => http } }
 })
 
-function httpError(status: number): AxiosError {
+function httpError(status: number, data: object = {}): AxiosError {
   return new AxiosError('Request failed', undefined, undefined, undefined, {
     status,
     statusText: 'Request failed',
-    data: {},
+    data,
     headers: {},
     config: { headers: new AxiosHeaders() },
   })
@@ -211,4 +212,20 @@ test('a failed logout keeps the session so the user can try again', async () => 
   await expect(signOut(session)).rejects.toBe(networkError)
 
   expect(session.access).toBe('current')
+})
+
+test('shows the message from the server', () => {
+  /** The backend writes the words, for example the wait time after too many tries. */
+  const message = 'Too many tries. Please wait 42 seconds and try again.'
+  expect(getApiErrorMessage(httpError(429, { detail: message }))).toBe(message)
+  expect(getApiErrorMessage(httpError(500))).toBe(
+    'The server could not finish the request. Please try again.',
+  )
+})
+
+test('uses plain words when the server cannot be reached', () => {
+  /** Users do not need to know about Django. */
+  expect(getApiErrorMessage(new AxiosError('Network Error', 'ERR_NETWORK'))).toBe(
+    'Cannot reach the server. Please check your connection and try again.',
+  )
 })

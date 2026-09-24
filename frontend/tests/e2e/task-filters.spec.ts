@@ -1,81 +1,48 @@
 import { chooseOption } from './support/select'
+import { taskStatuses } from '@/api/tasks'
 import { makeTask, makeTasks } from '../support/fixtures'
-import { PAGE_SIZE } from '@/config'
 import { expect, test } from './support/workspace'
 
-test('applies each filter automatically and resets pagination', async ({
-  page,
-  workspace,
-}) => {
-  /** Finds tasks through combined API filters, starting on page one. */
+test('applies each filter to every column automatically', async ({ page, workspace }) => {
+  /** Finds tasks through combined API filters in all columns. */
   await workspace.open({
     tasks: [
-      ...makeTasks(PAGE_SIZE + 1),
-      makeTask({
-        id: 100,
-        title: 'Find this report',
-        status: 'done',
-        assigned_to: 2,
-      }),
+      ...makeTasks(3),
+      makeTask({ id: 100, title: 'Find this report', assigned_to: 2, is_overdue: true }),
+      makeTask({ id: 101, title: 'On time report', assigned_to: 2 }),
     ],
   })
-  await page
-    .getByRole('navigation', { name: 'Task pages' })
-    .getByRole('button', { name: 'Next' })
-    .click()
-  await expect(
-    page.getByRole('heading', { name: 'Task 1', exact: true }),
-  ).toBeVisible()
+  const board = page.getByRole('region', { name: 'Task board' })
   await expect(page.getByRole('button', { name: 'Apply filters' })).toHaveCount(0)
-  await chooseOption(page, page.getByLabel('Filter by status'), 'Done')
-  await expect(
-    page.getByRole('region', { name: 'Task board' }).getByRole('heading', { level: 3 }),
-  ).toHaveText(['Find this report'])
-  await expect(page.getByRole('navigation', { name: 'Task pages' })).toContainText('Page 1')
-  expect(workspace.taskRequests.at(-1)?.searchParams.get('status')).toBe('done')
-  await page.getByLabel('Filter by due date').fill('2026-10-10')
-  await expect.poll(
-    () => workspace.taskRequests.at(-1)?.searchParams.get('due_date'),
-  ).toBe('2026-10-10')
+  await chooseOption(page, page.getByLabel('Filter by due date'), 'Overdue')
+  await expect.poll(() => workspace.taskRequests.at(-1)?.searchParams.get('due')).toBe('overdue')
   await chooseOption(page, page.getByLabel('Filter by assignee'), 'Bruno Costa')
-  await expect.poll(
-    () => workspace.taskRequests.at(-1)?.searchParams.get('assigned_to'),
-  ).toBe('2')
-  await page.getByLabel('Search tasks').fill('Find this')
-  await expect.poll(
-    () => workspace.taskRequests.at(-1)?.searchParams.get('search'),
-  ).toBe('Find this')
-  await expect(
-    page.getByRole('region', { name: 'Task board' }).getByRole('heading', { level: 3 }),
-  ).toHaveText(['Find this report'])
-  expect(
-    Object.fromEntries(workspace.taskRequests.at(-1)!.searchParams),
-  ).toMatchObject({
-    page: '1',
-    status: 'done',
-    search: 'Find this',
-    assigned_to: '2',
-    due_date: '2026-10-10',
-  })
+  await page.getByLabel('Search tasks').fill('report')
+  await expect(board.getByRole('heading', { level: 3 })).toHaveText(['Find this report'])
+  const searched = () =>
+    workspace.taskRequests.filter((url) => url.searchParams.get('search') === 'report')
+  await expect
+    .poll(() => new Set(searched().map((url) => url.searchParams.get('status'))).size)
+    .toBe(taskStatuses.length)
+  for (const url of searched()) {
+    expect(Object.fromEntries(url.searchParams)).toMatchObject({
+      page: '1',
+      assigned_to: '2',
+      due: 'overdue',
+    })
+  }
   await page.getByRole('button', { name: 'Reset', exact: true }).click()
   await expect(page.getByLabel('Search tasks')).toHaveValue('')
-  await expect(page.getByLabel('Filter by status')).toHaveText('All statuses')
-  await expect(page.getByLabel('Filter by due date')).toHaveValue('')
+  await expect(page.getByLabel('Filter by due date')).toHaveText('Any due date')
   await expect(page.getByLabel('Filter by assignee')).toHaveText('All assignees')
-  await expect(
-    page.getByRole('region', { name: 'Task board' }).getByRole('heading', { level: 3 }),
-  ).toHaveCount(PAGE_SIZE)
+  await expect(board.getByRole('heading', { level: 3 })).toHaveCount(5)
 })
 
-test('filters unassigned tasks and handles no results', async ({
-  page,
-  workspace,
-}) => {
-  /** Sends the unassigned filter and shows an empty result clearly. */
+test('filters unassigned tasks and handles no results', async ({ page, workspace }) => {
+  /** Sends the unassigned filter and shows each empty column. */
   await workspace.open({ tasks: [makeTask({ assigned_to: 1 })] })
   await chooseOption(page, page.getByLabel('Filter by assignee'), 'Unassigned')
-  await expect(page.getByText('No tasks found.')).toBeVisible()
-  expect(workspace.taskRequests.at(-1)?.searchParams.get('unassigned')).toBe(
-    'true',
-  )
+  const board = page.getByRole('region', { name: 'Task board' })
+  await expect(board.getByText('No tasks', { exact: true })).toHaveCount(5)
+  expect(workspace.taskRequests.at(-1)?.searchParams.get('unassigned')).toBe('true')
 })

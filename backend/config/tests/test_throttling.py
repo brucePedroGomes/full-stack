@@ -67,6 +67,23 @@ class RateLimitTests(APITestCase):
         self.assertEqual(blocked.status_code, 429)
         self.assertIn('Retry-After', blocked)
 
+    def test_browser_login_says_how_long_to_wait(self) -> None:
+        """Give a clear message with the wait time after too many tries."""
+        browser = Client(enforce_csrf_checks=True)
+        browser.get(reverse('browser-csrf'))
+        csrf = browser.cookies['csrftoken'].value
+        credentials = {'username': 'missing', 'password': 'wrong'}
+        for _ in range(2):
+            browser.post(reverse('browser-login'), credentials, HTTP_X_CSRFTOKEN=csrf)
+
+        blocked = browser.post(reverse('browser-login'), credentials, HTTP_X_CSRFTOKEN=csrf)
+
+        self.assertEqual(blocked.status_code, 429)
+        self.assertRegex(
+            blocked.json()['detail'],
+            r'^Too many tries\. Please wait \d+ seconds and try again\.$',
+        )
+
     def test_forwarded_header_cannot_reset_anonymous_limit(self) -> None:
         """Ignore a client-supplied IP header with no trusted proxies."""
         url = reverse('token-obtain')

@@ -25,6 +25,7 @@ export function TaskForm({ task }: TaskFormProps) {
     Partial<Record<keyof TaskInput, string>>
   >({})
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [hasChanges, setHasChanges] = useState(false)
   const [assignee, setAssignee] = useState<number | 'unassigned'>(
     task?.assigned_to ?? 'unassigned',
   )
@@ -63,18 +64,31 @@ export function TaskForm({ task }: TaskFormProps) {
     if (task) {
       setValidationErrors({})
       save.reset()
-      remove.mutate(task.id)
+      remove.mutate(task)
     }
+  }
+
+  function closeForm() {
+    if (!hasChanges || window.confirm('Discard your changes?')) closeEditor()
+  }
+
+  function changeAssignee(value: number | 'unassigned') {
+    setAssignee(value)
+    setHasChanges(true)
   }
 
   return (
     <Dialog
       open
       title={task ? 'Edit task' : 'New task'}
-      onClose={closeEditor}
+      onClose={closeForm}
       closeDisabled={busy}
     >
-      <form className="space-y-4" onSubmit={handleSubmit}>
+      <form
+        className="space-y-4"
+        onSubmit={handleSubmit}
+        onChange={() => setHasChanges(true)}
+      >
         <Fieldset disabled={busy}>
           <Input
             label="Title"
@@ -105,7 +119,7 @@ export function TaskForm({ task }: TaskFormProps) {
               label="Assigned to"
               error={validationErrors.assigned_to}
               value={assignee}
-              onChange={setAssignee}
+              onChange={changeAssignee}
               options={assigneeOptions}
             />
             {users.isPending ? (
@@ -139,7 +153,7 @@ export function TaskForm({ task }: TaskFormProps) {
               <Icon name="delete" /> Delete
             </Button>
           ) : null}
-          <Button disabled={busy} onClick={closeEditor}>
+          <Button disabled={busy} onClick={closeForm}>
             Cancel
           </Button>
           <Button type="submit" variant="primary" disabled={busy}>

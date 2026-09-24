@@ -1,8 +1,10 @@
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from tasks.models import Task
@@ -25,7 +27,6 @@ class TaskCrudTests(APITestCase):
                 'title': 'Write report',
                 'assigned_to': self.assignee.pk,
                 'created_by': self.assignee.pk,
-                'status': 'done',
             },
             format='json',
         )
@@ -35,6 +36,57 @@ class TaskCrudTests(APITestCase):
         self.assertEqual(task.created_by, self.creator)
         self.assertEqual(task.assigned_to, self.assignee)
         self.assertEqual(task.status, Task.Status.PLANNED)
+
+    def test_create_task_in_a_status(self):
+        """Start a new task in the column where it was added."""
+        response = self.client.post(
+            reverse('tasks:list'),
+            {'title': 'Write report', 'status': 'to_do'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        task = Task.objects.get(pk=response.data['id'])
+        self.assertEqual(task.status, Task.Status.TO_DO)
+
+    def test_create_rejects_unknown_status(self):
+        """Reject a status that does not exist."""
+        response = self.client.post(
+            reverse('tasks:list'),
+            {'title': 'Write report', 'status': 'unknown'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_marks_late_tasks_as_overdue(self):
+        """Tell the client which tasks are late, so it does not compare dates."""
+        today = timezone.localdate()
+        yesterday = today - timedelta(days=1)
+        Task.objects.create(title='Late', created_by=self.creator, due_date=yesterday)
+        Task.objects.create(title='Due today', created_by=self.creator, due_date=today)
+        Task.objects.create(
+            title='Finished', created_by=self.creator,
+            due_date=yesterday, status=Task.Status.DONE,
+        )
+        Task.objects.create(title='No date', created_by=self.creator)
+
+        response = self.client.get(reverse('tasks:list'))
+
+        self.assertEqual(
+            {task['title']: task.get('is_overdue') for task in response.data['results']},
+            {'Late': True, 'Due today': False, 'Finished': False, 'No date': False},
+        )
+
+    def test_uses_the_team_day_for_overdue(self):
+        """At 22:00 in Brazil it is still the due day, even when UTC is on the next day."""
+        Task.objects.create(title='Due today', created_by=self.creator, due_date=date(2026, 9, 24))
+        brazil_evening = datetime(2026, 9, 25, 1, 0, tzinfo=UTC)
+
+        with patch('django.utils.timezone.now', return_value=brazil_evening):
+            response = self.client.get(reverse('tasks:list'))
+
+        self.assertIs(response.data['results'][0]['is_overdue'], False)
 
     def test_read_task(self):
         """Return a task by its ID."""

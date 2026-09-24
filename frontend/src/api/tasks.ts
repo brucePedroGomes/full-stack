@@ -1,6 +1,5 @@
-import { queryOptions } from '@tanstack/react-query'
+import { infiniteQueryOptions, keepPreviousData } from '@tanstack/react-query'
 import { z } from 'zod'
-import { PAGE_SIZE } from '@/config'
 import { requestWithSession, type Session } from './session'
 import type { UserSummary } from './users'
 
@@ -13,6 +12,11 @@ export const taskStatuses = [
 ] as const
 
 export type TaskStatus = (typeof taskStatuses)[number]['value']
+
+export function statusLabel(status: TaskStatus): string {
+  return taskStatuses.find((item) => item.value === status)?.label ?? status
+}
+
 export const taskInputSchema = z.object({
   title: z
     .string()
@@ -31,30 +35,35 @@ export type Task = TaskInput & {
   id: number
   status: TaskStatus
   assignee: UserSummary | null
+  is_overdue: boolean
 }
 export type TaskPage = { count: number; next: string | null; results: Task[] }
+export type DueFilter = 'all' | 'overdue' | 'next7'
 export type TaskFilters = {
   search: string
-  status: TaskStatus | 'all'
   assignee: 'all' | 'unassigned' | number
-  due_date: string
+  due: DueFilter
 }
 export const defaultFilters: TaskFilters = {
   search: '',
-  status: 'all',
   assignee: 'all',
-  due_date: '',
+  due: 'all',
 }
 
-export function tasksQuery(
+export function columnQuery(
   session: Session,
   accountId: number,
   filters: TaskFilters,
-  page: number,
+  status: TaskStatus,
 ) {
-  return queryOptions({
-    queryKey: ['tasks', accountId, filters, page],
-    queryFn: ({ signal }) => getTasks(session, filters, page, signal),
+  return infiniteQueryOptions({
+    queryKey: ['tasks', accountId, status, filters],
+    queryFn: ({ pageParam, signal }) =>
+      getTasks(session, filters, status, pageParam, signal),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.next ? allPages.length + 1 : undefined,
+    placeholderData: keepPreviousData,
     staleTime: 30_000,
     retry: false,
   })
@@ -63,17 +72,13 @@ export function tasksQuery(
 export async function getTasks(
   session: Session,
   filters: TaskFilters,
+  status: TaskStatus,
   page = 1,
   signal?: AbortSignal,
 ): Promise<TaskPage> {
-  const params = new URLSearchParams({
-    page: String(page),
-    page_size: String(PAGE_SIZE),
-    ordering: '-id',
-  })
-  if (filters.status !== 'all') params.set('status', filters.status)
+  const params = new URLSearchParams({ page: String(page), status })
   if (filters.search) params.set('search', filters.search)
-  if (filters.due_date) params.set('due_date', filters.due_date)
+  if (filters.due !== 'all') params.set('due', filters.due)
   if (typeof filters.assignee === 'number')
     params.set('assigned_to', String(filters.assignee))
   if (filters.assignee === 'unassigned') params.set('unassigned', 'true')
@@ -84,7 +89,7 @@ export async function getTasks(
 
 export async function createTask(
   session: Session,
-  values: TaskInput,
+  values: TaskInput & { status?: TaskStatus },
 ): Promise<Task> {
   return requestWithSession<Task>('/api/tasks/', session, {
     method: 'post',

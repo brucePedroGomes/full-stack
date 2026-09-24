@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  useMutation,
+  useMutationState,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { SessionExpiredError, type SignedInSession } from '@/api/session'
 import {
+  columnQuery,
   createTask,
   defaultFilters,
   deleteTask,
-  tasksQuery,
+  statusLabel,
   updateTask,
   updateTaskStatus,
   type Task,
@@ -19,32 +25,62 @@ type UseTasksOptions = SignedInSession & {
   onSessionExpired: (message: string) => void
 }
 
+type Move = { task: Task; to: TaskStatus }
+
 export function useTasks({ session, account, onSessionExpired }: UseTasksOptions) {
   const client = useQueryClient()
   const [filters, setFilters] = useState(defaultFilters)
-  const [page, setPage] = useState(1)
   const [editor, setEditor] = useState<{ task: Task | null } | null>(null)
-  const tasks = useQuery(tasksQuery(session, account.id, filters, page))
+  const [notice, setNotice] = useState('')
   const users = useQuery(usersQuery(session))
 
-  function refreshTasks() {
-    return client.invalidateQueries({ queryKey: ['tasks', account.id] })
+  function columnTasks(status: TaskStatus) {
+    return columnQuery(session, account.id, filters, status)
+  }
+
+  function refreshColumns(...statuses: TaskStatus[]) {
+    return Promise.all(
+      statuses.map((status) =>
+        client.invalidateQueries({ queryKey: ['tasks', account.id, status] }),
+      ),
+    )
   }
 
   async function finishEditing() {
+    const status = editor?.task?.status ?? 'planned'
     setEditor(null)
-    setPage(1)
-    await refreshTasks()
+    await refreshColumns(status)
   }
 
-  const status = useMutation({
-    mutationFn: ({ id, value }: { id: number; value: TaskStatus }) =>
-      updateTaskStatus(session, id, value),
-    onSuccess: async () => {
-      if (filters.status !== 'all') setPage(1)
-      await refreshTasks()
-    },
+  const move = useMutation({
+    mutationKey: ['move'],
+    mutationFn: ({ task, to }: Move) => updateTaskStatus(session, task.id, to),
+    onSuccess: (_result, { task, to }) =>
+      setNotice(`Moved "${task.title}" to ${statusLabel(to)}.`),
+    onSettled: (_result, _error, { task, to }) => refreshColumns(task.status, to),
   })
+  const movingTaskIds = useMutationState({
+    filters: { mutationKey: ['move'], status: 'pending' },
+    select: (mutation) => (mutation.state.variables as Move).task.id,
+  })
+
+  function moveTask(task: Task, to: TaskStatus) {
+    if (task.status !== to && !movingTaskIds.includes(task.id)) move.mutate({ task, to })
+  }
+
+  const quickAdd = useMutation({
+    mutationFn: ({ title, status }: { title: string; status: TaskStatus }) =>
+      createTask(session, {
+        title,
+        description: '',
+        due_date: null,
+        assigned_to: null,
+        status,
+      }),
+    onSuccess: (task) => setNotice(`Added "${task.title}".`),
+    onSettled: (_result, _error, { status }) => refreshColumns(status),
+  })
+
   const save = useMutation({
     mutationFn: (values: TaskInput) => {
       const task = editor?.task
@@ -52,11 +88,17 @@ export function useTasks({ session, account, onSessionExpired }: UseTasksOptions
         ? updateTask(session, task.id, values)
         : createTask(session, values)
     },
-    onSuccess: finishEditing,
+    onSuccess: (task) => {
+      setNotice(`Saved "${task.title}".`)
+      return finishEditing()
+    },
   })
   const remove = useMutation({
-    mutationFn: (id: number) => deleteTask(session, id),
-    onSuccess: finishEditing,
+    mutationFn: (task: Task) => deleteTask(session, task.id),
+    onSuccess: (_result, task) => {
+      setNotice(`Deleted "${task.title}".`)
+      return finishEditing()
+    },
   })
 
   function editTask(task: Task | null) {
@@ -73,14 +115,13 @@ export function useTasks({ session, account, onSessionExpired }: UseTasksOptions
     setEditor(null)
   }
 
-  const { reset: resetStatus } = status
+  const { reset: resetMove } = move
   const updateFilters = useCallback(
     (changes: Partial<TaskFilters>) => {
       setFilters((current) => ({ ...current, ...changes }))
-      setPage(1)
-      resetStatus()
+      resetMove()
     },
-    [resetStatus],
+    [resetMove],
   )
 
   function resetFilters() {
@@ -88,8 +129,8 @@ export function useTasks({ session, account, onSessionExpired }: UseTasksOptions
   }
 
   const sessionError = [
-    tasks.error,
-    status.error,
+    move.error,
+    quickAdd.error,
     save.error,
     remove.error,
     users.error,
@@ -103,10 +144,12 @@ export function useTasks({ session, account, onSessionExpired }: UseTasksOptions
     filters,
     updateFilters,
     resetFilters,
-    page,
-    setPage,
-    tasks,
-    status,
+    columnTasks,
+    move,
+    moveTask,
+    movingTaskIds,
+    notice,
+    quickAdd,
     users,
     editor,
     newTask,
@@ -114,5 +157,6 @@ export function useTasks({ session, account, onSessionExpired }: UseTasksOptions
     closeEditor,
     save,
     remove,
+    onSessionExpired,
   }
 }
