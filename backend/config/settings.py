@@ -51,6 +51,28 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.ScopedRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '60/min',
+        'user': '120/min',
+        'auth': '10/min',
+        'auth_csr': '60/min',
+    },
+    'NUM_PROXIES': env.NUM_PROXIES,
+}
+
+CACHES = {
+    'default': {
+        'BACKEND': (
+            'django.core.cache.backends.redis.RedisCache'
+            if env.CACHE_URL else 'django.core.cache.backends.locmem.LocMemCache'
+        ),
+        'LOCATION': env.CACHE_URL or 'challenge-api',
+    },
 }
 
 if DEBUG:

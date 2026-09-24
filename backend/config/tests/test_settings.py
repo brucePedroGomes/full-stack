@@ -13,6 +13,7 @@ class SettingsTests(SimpleTestCase):
             'DJANGO_PASSWORD_PEPPER': 'ab' * 32,
             'DJANGO_EMAIL_HOST': 'smtp.example.com',
             'DJANGO_EMAIL_FROM': 'challenge@example.com',
+            'DJANGO_CACHE_URL': 'redis://localhost:6379/0',
             'DJANGO_ARGON2_TIME_COST': '3',
             'DJANGO_ARGON2_MEMORY_COST': '65536',
             'DJANGO_ARGON2_PARALLELISM': '4',
@@ -42,10 +43,13 @@ class SettingsTests(SimpleTestCase):
         self.assertEqual(settings['ARGON2_PARALLELISM'], 4)
         self.assertEqual(settings['DATABASES']['default']['PORT'], 5439)
         self.assertEqual(settings['STATIC_ROOT'], settings['BASE_DIR'] / 'staticfiles')
+        self.assertEqual(settings['CACHES']['default']['LOCATION'], 'redis://localhost:6379/0')
+        self.assertEqual(settings['REST_FRAMEWORK']['NUM_PROXIES'], 0)
 
     def test_development_uses_local_features(self):
         """Allow local HTTP, browsable API, and console email in debug."""
         self.values['DJANGO_DEBUG'] = 'true'
+        del self.values['DJANGO_CACHE_URL']
         settings = self._load_settings()
 
         self.assertTrue(settings['ENABLE_API_DOCS'])
@@ -55,6 +59,10 @@ class SettingsTests(SimpleTestCase):
             settings['REST_FRAMEWORK']['DEFAULT_RENDERER_CLASSES'],
         )
         self.assertNotIn('whitenoise.middleware.WhiteNoiseMiddleware', settings['MIDDLEWARE'])
+        self.assertEqual(
+            settings['CACHES']['default']['BACKEND'],
+            'django.core.cache.backends.locmem.LocMemCache',
+        )
         self.assertEqual(
             settings['MAILERS']['default']['BACKEND'],
             'django.core.mail.backends.console.EmailBackend',

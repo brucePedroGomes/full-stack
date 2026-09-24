@@ -36,6 +36,14 @@ class Env:
             )
         self.DEBUG = self._bool('DJANGO_DEBUG')
         self.ENABLE_API_DOCS = self._bool('DJANGO_ENABLE_API_DOCS', default=self.DEBUG)
+        self.CACHE_URL = self._values.get('DJANGO_CACHE_URL', '').strip()
+        if not self.DEBUG and not self.CACHE_URL:
+            raise ImproperlyConfigured('DJANGO_CACHE_URL is required outside debug mode.')
+        if self.CACHE_URL and not self.CACHE_URL.startswith(('redis://', 'rediss://')):
+            raise ImproperlyConfigured('DJANGO_CACHE_URL must be a Redis URL.')
+        self.NUM_PROXIES = self._int('DJANGO_NUM_PROXIES', 0)
+        if self.NUM_PROXIES < 0:
+            raise ImproperlyConfigured('DJANGO_NUM_PROXIES cannot be negative.')
         self.ALLOWED_HOSTS = self._list('DJANGO_ALLOWED_HOSTS')
         self.SESSION_COOKIE_SECURE = self._bool(
             'DJANGO_SESSION_COOKIE_SECURE', default=not self.DEBUG

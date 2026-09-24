@@ -3,9 +3,18 @@ from typing import cast
 from django.contrib.auth.models import User
 from rest_framework.filters import SearchFilter
 from rest_framework.generics import ListAPIView, RetrieveAPIView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .pagination import UserPagination
 from .serializers import UserSerializer, UserSummarySerializer
+
+
+class RateLimitedTokenObtainPairView(TokenObtainPairView):
+    throttle_scope = 'auth'
+
+
+class RateLimitedTokenRefreshView(TokenRefreshView):
+    throttle_scope = 'auth'
 
 
 class UserListView(ListAPIView[User]):

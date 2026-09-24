@@ -13,6 +13,7 @@ class EnvTests(TestCase):
             'DJANGO_PASSWORD_PEPPER': 'ab' * 32,
             'DJANGO_EMAIL_HOST': 'smtp.example.com',
             'DJANGO_EMAIL_FROM': 'challenge@example.com',
+            'DJANGO_CACHE_URL': 'redis://localhost:6379/0',
             'DB_NAME': 'test',
             'DB_USER': 'test',
             'DB_PASSWORD': 'test',
@@ -28,6 +29,25 @@ class EnvTests(TestCase):
         self.assertTrue(env.SESSION_COOKIE_SECURE)
         self.assertTrue(env.CSRF_COOKIE_SECURE)
         self.assertEqual(env.EMAIL_HOST, 'smtp.example.com')
+        self.assertEqual(env.NUM_PROXIES, 0)
+
+    def test_production_requires_shared_cache(self):
+        """Require a cache that all API workers can use."""
+        del self.values['DJANGO_CACHE_URL']
+        with self.assertRaisesRegex(ImproperlyConfigured, 'DJANGO_CACHE_URL'):
+            Env(self.values)
+
+    def test_cache_url_must_use_redis(self):
+        """Reject cache URLs for unsupported backends."""
+        self.values['DJANGO_CACHE_URL'] = 'http://localhost:6379'
+        with self.assertRaisesRegex(ImproperlyConfigured, 'DJANGO_CACHE_URL'):
+            Env(self.values)
+
+    def test_proxy_count_cannot_be_negative(self):
+        """Reject invalid proxy counts for IP rate limits."""
+        self.values['DJANGO_NUM_PROXIES'] = '-1'
+        with self.assertRaisesRegex(ImproperlyConfigured, 'DJANGO_NUM_PROXIES'):
+            Env(self.values)
 
     def test_production_requires_email_host(self):
         """Require an SMTP host when debug is off."""
@@ -56,12 +76,14 @@ class EnvTests(TestCase):
     def test_debug_allows_local_http(self):
         """Debug enables local development over HTTP."""
         self.values['DJANGO_DEBUG'] = 'true'
+        del self.values['DJANGO_CACHE_URL']
         env = Env(self.values)
         self.assertTrue(env.DEBUG)
         self.assertTrue(env.ENABLE_API_DOCS)
         self.assertFalse(env.SECURE_SSL_REDIRECT)
         self.assertFalse(env.SESSION_COOKIE_SECURE)
         self.assertFalse(env.CSRF_COOKIE_SECURE)
+        self.assertEqual(env.CACHE_URL, '')
 
     def test_staging_can_enable_docs_without_debug(self):
         """Allow staging docs while keeping debug off."""

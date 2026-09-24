@@ -11,6 +11,7 @@ dependencies = [
     "django-filter>=26.1,<27",
     "drf-spectacular[sidecar]>=0.30,<0.31",
     "whitenoise>=6.12,<7",
+    "redis>=6,<7",
 ]
 
 [dependency-groups]

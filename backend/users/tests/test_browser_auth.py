@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.views.debug import SafeExceptionReporterFilter
@@ -9,9 +10,16 @@ from django.views.debug import SafeExceptionReporterFilter
     SECURE_SSL_REDIRECT=False,
     SESSION_COOKIE_SECURE=False,
     CSRF_COOKIE_SECURE=False,
+    CACHES={
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'browser-auth-tests',
+        },
+    },
 )
 class BrowserAuthenticationTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = Client(enforce_csrf_checks=True)
         self.user = User.objects.create_user(
             username='ana', password='example-password'

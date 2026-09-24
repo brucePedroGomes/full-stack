@@ -1,12 +1,23 @@
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.test import override_settings
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
 
-@override_settings(ALLOWED_HOSTS=['testserver'], SECURE_SSL_REDIRECT=False)
+@override_settings(
+    ALLOWED_HOSTS=['testserver'],
+    SECURE_SSL_REDIRECT=False,
+    CACHES={
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'jwt-tests',
+        },
+    },
+)
 class JWTAuthenticationTests(APITestCase):
     def setUp(self):
+        cache.clear()
         self.user = User.objects.create_user(
             username='ana', password='example-password'
         )
