@@ -98,6 +98,10 @@ test('applies selections immediately and keeps them when search finishes', () =>
 test('reset clears all controls and cancels a pending search', () => {
   /** Waiting after Reset must not bring back the previous search. */
   const { onApply } = openFilters()
+  fireEvent.change(screen.getByLabelText('Search tasks'), {
+    target: { value: 'applied search' },
+  })
+  act(() => vi.advanceTimersByTime(300))
   chooseOption('Filter by status', 'Blocked')
   fireEvent.change(screen.getByLabelText('Filter by due date'), {
     target: { value: '2026-10-10' },
@@ -115,6 +119,24 @@ test('reset clears all controls and cancels a pending search', () => {
   expect(screen.getByLabelText('Filter by assignee')).toHaveTextContent('All assignees')
   act(() => vi.advanceTimersByTime(300))
   expect(onApply).toHaveBeenCalledExactlyOnceWith(defaultFilters)
+})
+
+test('submitting applies the latest search without restoring the previous query', () => {
+  const { onApply } = openFilters()
+  const search = screen.getByLabelText('Search tasks')
+  fireEvent.change(search, { target: { value: 'old search' } })
+  act(() => vi.advanceTimersByTime(300))
+  onApply.mockClear()
+
+  fireEvent.change(search, { target: { value: ' new search ' } })
+  fireEvent.submit(screen.getByRole('form', { name: 'Task filters' }))
+  expect(onApply).toHaveBeenCalledExactlyOnceWith({
+    ...defaultFilters,
+    search: 'new search',
+  })
+
+  act(() => vi.advanceTimersByTime(300))
+  expect(onApply).toHaveBeenCalledTimes(1)
 })
 
 test('clears search and cancels pending work when the filters unmount', () => {

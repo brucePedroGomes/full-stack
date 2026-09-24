@@ -11,6 +11,7 @@ import {
   taskStatuses,
   type TaskFilters as Filters,
 } from '@/api/tasks'
+import { useDebounce } from '@/hooks/useDebounce'
 import { useUserOptions } from '@/hooks/useUserOptions'
 import { Button, Input, Select, type SelectOption } from './ui'
 
@@ -33,6 +34,7 @@ export function TaskFilters({
   onSessionExpired,
 }: TaskFiltersProps) {
   const [search, setSearch] = useState(filters.search)
+  const debouncedSearch = useDebounce(search, 500)
   const users = useUserOptions(session, onSessionExpired)
   const assigneeOptions: SelectOption<Filters['assignee']>[] = [
     { value: 'all', label: 'All assignees' },
@@ -41,14 +43,15 @@ export function TaskFilters({
   ]
 
   useEffect(() => {
-    const nextSearch = search.trim()
-    if (nextSearch === filters.search) return
+    const isSearchPending = search !== debouncedSearch
+    if (isSearchPending) return
 
-    const timeout = window.setTimeout(() => {
-      onApply({ ...filters, search: nextSearch })
-    }, 300)
-    return () => window.clearTimeout(timeout)
-  }, [search, filters, onApply])
+    const trimmedSearch = debouncedSearch.trim()
+    const isSearchAlreadyApplied = trimmedSearch === filters.search
+    if (isSearchAlreadyApplied) return
+
+    onApply({ ...filters, search: trimmedSearch })
+  }, [debouncedSearch, search, filters, onApply])
 
   const handleSearchChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
