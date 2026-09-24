@@ -22,7 +22,7 @@ type TaskColumnProps = {
 }
 
 export function TaskColumn({ status, label }: TaskColumnProps) {
-  const { moveTask } = useTaskContext()
+  const { moveTask, editTask, movingTaskIds } = useTaskContext()
   const column = useColumnTasks(status)
 
   function dropCard(event: DragEvent<HTMLElement>) {
@@ -76,7 +76,13 @@ export function TaskColumn({ status, label }: TaskColumnProps) {
           className="max-h-[65vh] space-y-3 overflow-y-auto p-1 lg:max-h-none lg:min-h-0 lg:flex-1"
         >
           {column.tasks.map((task) => (
-            <TaskCard key={task.id} task={task} />
+            <TaskCard
+              key={task.id}
+              task={task}
+              moving={movingTaskIds.includes(task.id)}
+              onMove={moveTask}
+              onEdit={editTask}
+            />
           ))}
         </ul>
       ) : null}

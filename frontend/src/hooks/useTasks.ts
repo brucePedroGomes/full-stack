@@ -64,9 +64,13 @@ export function useTasks({ session, account, onSessionExpired }: UseTasksOptions
     select: (mutation) => (mutation.state.variables as Move).task.id,
   })
 
-  function moveTask(task: Task, to: TaskStatus) {
-    if (task.status !== to && !movingTaskIds.includes(task.id)) move.mutate({ task, to })
-  }
+  const { mutate: mutateMove, reset: resetMove } = move
+  const moveTask = useCallback(
+    (task: Task, to: TaskStatus) => {
+      if (task.status !== to) mutateMove({ task, to })
+    },
+    [mutateMove],
+  )
 
   const quickAdd = useMutation({
     mutationFn: ({ title, status }: { title: string; status: TaskStatus }) =>
@@ -101,11 +105,16 @@ export function useTasks({ session, account, onSessionExpired }: UseTasksOptions
     },
   })
 
-  function editTask(task: Task | null) {
-    save.reset()
-    remove.reset()
-    setEditor({ task })
-  }
+  const { reset: resetSave } = save
+  const { reset: resetRemove } = remove
+  const editTask = useCallback(
+    (task: Task | null) => {
+      resetSave()
+      resetRemove()
+      setEditor({ task })
+    },
+    [resetSave, resetRemove],
+  )
 
   function newTask() {
     editTask(null)
@@ -115,7 +124,6 @@ export function useTasks({ session, account, onSessionExpired }: UseTasksOptions
     setEditor(null)
   }
 
-  const { reset: resetMove } = move
   const updateFilters = useCallback(
     (changes: Partial<TaskFilters>) => {
       setFilters((current) => ({ ...current, ...changes }))

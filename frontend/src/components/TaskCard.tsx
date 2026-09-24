@@ -1,7 +1,7 @@
-import { taskStatuses, type Task } from '@/api/tasks'
+import { memo } from 'react'
+import { taskStatuses, type Task, type TaskStatus } from '@/api/tasks'
 import { getUserName } from '@/api/users'
 import { TASK_DRAG_TYPE } from '@/config'
-import { useTaskContext } from '@/contexts/TaskContext'
 import { Button, Icon, Select } from './ui'
 
 const dueDateFormat = new Intl.DateTimeFormat('en-US', {
@@ -11,12 +11,17 @@ const dueDateFormat = new Intl.DateTimeFormat('en-US', {
 
 type TaskCardProps = {
   task: Task
+  moving: boolean
+  onMove: (task: Task, to: TaskStatus) => void
+  onEdit: (task: Task) => void
 }
 
-export function TaskCard({ task }: TaskCardProps) {
-  const { moveTask, editTask, movingTaskIds } = useTaskContext()
-  const moving = movingTaskIds.includes(task.id)
-
+export const TaskCard = memo(function TaskCard({
+  task,
+  moving,
+  onMove,
+  onEdit,
+}: TaskCardProps) {
   return (
     <li
       draggable={!moving}
@@ -33,7 +38,7 @@ export function TaskCard({ task }: TaskCardProps) {
           type="button"
           variant="icon"
           aria-label={`Edit ${task.title}`}
-          onClick={() => editTask(task)}
+          onClick={() => onEdit(task)}
         >
           <Icon name="edit" />
         </Button>
@@ -62,11 +67,11 @@ export function TaskCard({ task }: TaskCardProps) {
         aria-label={`Status for ${task.title}`}
         value={task.status}
         disabled={moving}
-        onChange={(value) => moveTask(task, value)}
+        onChange={(value) => onMove(task, value)}
         options={taskStatuses}
         className="text-sm"
       />
       {moving ? <p className="text-sm text-gray-600">Moving...</p> : null}
     </li>
   )
-}
+})
