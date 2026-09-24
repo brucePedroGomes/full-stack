@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from django.test import SimpleTestCase
+from pydantic import ValidationError
 
 
 class SettingsTests(SimpleTestCase):
@@ -51,9 +52,14 @@ class SettingsTests(SimpleTestCase):
         self.assertTrue(settings['CELERY_TASK_IGNORE_RESULT'])
 
     def test_development_uses_local_features(self):
-        """Allow local HTTP, browsable API, and console email in debug."""
-        self.values['DJANGO_DEBUG'] = 'true'
-        del self.values['DJANGO_CACHE_URL']
+        """Use explicit local HTTP settings, Redis, and console email."""
+        self.values.update({
+            'DJANGO_DEBUG': 'true',
+            'DJANGO_ENABLE_API_DOCS': 'true',
+            'DJANGO_SECURE_SSL_REDIRECT': 'false',
+            'DJANGO_SESSION_COOKIE_SECURE': 'false',
+            'DJANGO_CSRF_COOKIE_SECURE': 'false',
+        })
         settings = self._load_settings()
 
         self.assertTrue(settings['ENABLE_API_DOCS'])
@@ -65,7 +71,7 @@ class SettingsTests(SimpleTestCase):
         self.assertNotIn('whitenoise.middleware.WhiteNoiseMiddleware', settings['MIDDLEWARE'])
         self.assertEqual(
             settings['CACHES']['default']['BACKEND'],
-            'django.core.cache.backends.locmem.LocMemCache',
+            'django.core.cache.backends.redis.RedisCache',
         )
         self.assertEqual(
             settings['MAILERS']['default']['BACKEND'],
@@ -106,3 +112,13 @@ class SettingsTests(SimpleTestCase):
             settings['REST_FRAMEWORK']['DEFAULT_RENDERER_CLASSES'],
             ['rest_framework.renderers.JSONRenderer'],
         )
+
+    def test_invalid_settings_raise_validation_error_without_secrets(self):
+        """Stop startup with Pydantic's error, without exposing secret values."""
+        self.values['DJANGO_PASSWORD_PEPPER'] = 'private-invalid-pepper'
+        with self.assertRaises(ValidationError) as error:
+            self._load_settings()
+        message = str(error.exception)
+        self.assertIn('DJANGO_PASSWORD_PEPPER', message)
+        self.assertNotIn('private-invalid-pepper', message)
+        self.assertNotIn(self.values['DJANGO_SECRET_KEY'], message)

@@ -1,4 +1,4 @@
-# Local development only: run docker compose up -d.
+# Local development only: run docker compose up -d --build --wait.
 name: challenge
 
 x-app: &app
@@ -6,13 +6,6 @@ x-app: &app
   volumes:
     - .:/app
   env_file: .env
-  environment:
-    DJANGO_DEBUG: "true"
-    DB_HOST: postgres
-    DB_PORT: "5432"
-    DB_SSLMODE: disable
-    DJANGO_CACHE_URL: redis://redis:6379/0
-    CELERY_BROKER_URL: redis://redis:6379/1
   depends_on:
     postgres:
       condition: service_healthy
@@ -65,7 +58,7 @@ services:
       POSTGRES_USER: ${DB_USER:?Set DB_USER in backend/.env}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in backend/.env}
     ports:
-      - "127.0.0.1:${DB_PORT:-5439}:5432"
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5439}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
