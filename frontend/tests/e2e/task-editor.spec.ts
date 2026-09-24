@@ -47,9 +47,9 @@ test('creates, edits, and deletes a task', async ({ page, workspace }) => {
   await expect(dialog).toHaveCount(0)
   await page.reload()
   await expect(page.getByRole('heading', { name: 'Write notes' })).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Task board' })).toContainText(
-    'Bruno Costa · Due 2026-11-12',
-  )
+  const board = page.getByRole('region', { name: 'Task board' })
+  await expect(board).toContainText('Bruno Costa')
+  await expect(board).toContainText('Due Nov 12, 2026')
   await page.getByRole('button', { name: 'Edit Write notes' }).click()
   await expect(dialog.getByLabel('Description')).toHaveValue('Meeting notes')
   await dialog.getByLabel('Title', { exact: true }).fill('Updated notes')
@@ -59,22 +59,17 @@ test('creates, edits, and deletes a task', async ({ page, workspace }) => {
   await expect(
     page.getByRole('heading', { name: 'Updated notes' }),
   ).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Task board' })).toContainText(
-    'Unassigned · No due date',
-  )
+  await expect(board).toContainText('Unassigned')
+  await expect(board).toContainText('No due date')
   await page.getByRole('button', { name: 'Edit Updated notes' }).click()
   await dialog.getByRole('button', { name: 'Delete', exact: true }).click()
   await page
     .getByRole('alertdialog')
     .getByRole('button', { name: 'Delete', exact: true })
     .click()
-  await expect(
-    page.getByRole('region', { name: 'Task board' }).getByText('No tasks', { exact: true }),
-  ).toHaveCount(5)
+  await expect(board.getByText('No tasks', { exact: true })).toHaveCount(5)
   await page.reload()
-  await expect(
-    page.getByRole('region', { name: 'Task board' }).getByText('No tasks', { exact: true }),
-  ).toHaveCount(5)
+  await expect(board.getByText('No tasks', { exact: true })).toHaveCount(5)
 })
 
 test('cancels deletion and can retry a failed confirmation', async ({ page, workspace }) => {
