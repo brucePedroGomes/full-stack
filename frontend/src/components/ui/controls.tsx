@@ -15,11 +15,11 @@ import type { ComponentPropsWithRef, ReactNode } from 'react'
 import { Icon } from './Icon'
 
 const buttonStyles = {
-  primary: 'bg-gray-700 text-white data-hover:bg-gray-600',
-  secondary: 'bg-gray-100 data-hover:bg-gray-200',
-  danger: 'bg-red-700 text-white data-hover:bg-red-600',
-  plain: 'underline',
-  icon: 'shrink-0 data-hover:bg-gray-100',
+  primary: 'bg-gray-700 text-white enabled:data-hover:bg-gray-600 enabled:data-active:bg-gray-800 enabled:data-hover:data-active:bg-gray-800',
+  secondary: 'bg-gray-100 enabled:data-hover:bg-gray-200 enabled:data-active:bg-gray-300 enabled:data-hover:data-active:bg-gray-300',
+  danger: 'bg-red-700 text-white enabled:data-hover:bg-red-600 enabled:data-active:bg-red-800 enabled:data-hover:data-active:bg-red-800',
+  plain: 'underline underline-offset-4 enabled:data-hover:bg-gray-100 enabled:data-active:bg-gray-200 enabled:data-hover:data-active:bg-gray-200',
+  icon: 'shrink-0 enabled:data-hover:bg-gray-100 enabled:data-active:bg-gray-200 enabled:data-hover:data-active:bg-gray-200',
 }
 
 export type ButtonProps = ComponentPropsWithRef<'button'> & {
@@ -36,7 +36,7 @@ export function Button({
     <HeadlessButton
       {...props}
       type={type}
-      className={`inline-flex items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-gray-700 disabled:opacity-50 ${buttonStyles[variant]} ${className}`}
+      className={`inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-700 disabled:cursor-not-allowed disabled:opacity-50 ${buttonStyles[variant]} ${className}`}
     />
   )
 }
@@ -44,41 +44,68 @@ export function Button({
 type ControlLabelProps = {
   label?: string
   description?: string
+  error?: string
 }
 
 function ControlField({
   label,
   description,
+  error,
+  required,
   disabled,
   children,
-}: ControlLabelProps & { disabled?: boolean; children: ReactNode }) {
+}: ControlLabelProps & {
+  required?: boolean
+  disabled?: boolean
+  children: ReactNode
+}) {
   return (
     <Field disabled={disabled} className="min-w-0">
-      {label ? <Label className="text-sm font-medium">{label}</Label> : null}
+      {label ? (
+        <div className="flex flex-wrap items-baseline gap-1 text-sm">
+          <Label className="font-medium">{label}</Label>
+          {required ? (
+            <span aria-hidden="true" className="text-gray-600">(required)</span>
+          ) : null}
+        </div>
+      ) : null}
       {description ? (
         <Description className="text-sm text-gray-500">
           {description}
         </Description>
       ) : null}
       {children}
+      {error ? (
+        <Description role="alert" className="mt-2 text-sm text-red-700">
+          {error}
+        </Description>
+      ) : null}
     </Field>
   )
 }
 
 const controlStyles =
-  'block w-full min-w-0 rounded-lg bg-gray-100 px-3 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-gray-700 disabled:opacity-50'
+  'block min-h-11 w-full min-w-0 rounded-lg bg-gray-100 px-3 py-2 text-base sm:text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-700 aria-invalid:ring-1 aria-invalid:ring-red-700 disabled:cursor-not-allowed disabled:opacity-50'
 
 export type InputProps = ComponentPropsWithRef<'input'> & ControlLabelProps
 
 export function Input({
   label,
   description,
+  error,
   className = '',
   ...props
 }: InputProps) {
   return (
-    <ControlField label={label} description={description} disabled={props.disabled}>
+    <ControlField
+      label={label}
+      description={description}
+      error={error}
+      required={props.required}
+      disabled={props.disabled}
+    >
       <HeadlessInput
+        invalid={Boolean(error)}
         {...props}
         className={`${controlStyles} ${label || description ? 'mt-3' : ''} ${className}`}
       />
@@ -91,12 +118,20 @@ export type TextareaProps = ComponentPropsWithRef<'textarea'> & ControlLabelProp
 export function Textarea({
   label,
   description,
+  error,
   className = '',
   ...props
 }: TextareaProps) {
   return (
-    <ControlField label={label} description={description} disabled={props.disabled}>
+    <ControlField
+      label={label}
+      description={description}
+      error={error}
+      required={props.required}
+      disabled={props.disabled}
+    >
       <HeadlessTextarea
+        invalid={Boolean(error)}
         {...props}
         className={`${controlStyles} ${label || description ? 'mt-3' : ''} ${className}`}
       />
@@ -122,6 +157,7 @@ export type SelectProps<Value extends string | number> = Omit<
 export function Select<Value extends string | number>({
   label,
   description,
+  error,
   options,
   value,
   onChange,
@@ -134,7 +170,7 @@ export function Select<Value extends string | number>({
   const selectedOption = options.find((option) => option.value === value)
 
   return (
-    <ControlField label={label} description={description} disabled={disabled}>
+    <ControlField label={label} description={description} error={error} disabled={disabled}>
       <Listbox
         value={value}
         onChange={onChange}
@@ -143,11 +179,12 @@ export function Select<Value extends string | number>({
         disabled={disabled}
       >
         <ListboxButton
+          aria-invalid={error ? true : undefined}
           {...props}
-          className={`${controlStyles} relative pr-8 text-left ${label || description ? 'mt-3' : ''} ${className}`}
+          className={`${controlStyles} relative cursor-pointer pr-8 text-left enabled:data-hover:bg-gray-200 enabled:data-active:bg-gray-300 enabled:data-hover:data-active:bg-gray-300 ${label || description ? 'mt-3' : ''} ${className}`}
         >
           <span className="block truncate">{selectedOption?.label ?? String(value)}</span>
-          <Icon name="chevronDown" className="pointer-events-none absolute top-2.5 right-2.5 size-4 text-gray-500" />
+          <Icon name="chevronDown" className="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-gray-500" />
         </ListboxButton>
         <ListboxOptions
           anchor="bottom"
@@ -158,7 +195,7 @@ export function Select<Value extends string | number>({
               key={option.value}
               value={option.value}
               disabled={option.disabled}
-              className="group flex items-center gap-2 rounded-md px-3 py-1.5 text-sm data-focus:bg-gray-100 data-disabled:opacity-50"
+              className="group flex min-h-11 cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm data-focus:bg-gray-100 data-focus:outline-2 data-focus:-outline-offset-2 data-focus:outline-gray-700 data-disabled:cursor-not-allowed data-disabled:opacity-50"
             >
               <Icon name="check" className="invisible size-4 shrink-0 group-data-selected:visible" />
               <span className="min-w-0 wrap-anywhere">{option.label}</span>

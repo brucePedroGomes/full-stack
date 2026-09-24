@@ -21,6 +21,8 @@ test('validates a task title before sending it to the server', async ({
   await dialog.getByLabel('Description').fill('Keep this draft')
   await dialog.getByRole('button', { name: 'Save task' }).click()
   await expect(dialog.getByRole('alert')).toHaveText('Enter a task title.')
+  await expect(dialog.getByLabel('Title', { exact: true })).toHaveAttribute('aria-invalid', 'true')
+  await expect(dialog.getByLabel('Title', { exact: true })).toHaveAccessibleDescription('Enter a task title.')
   await expect(dialog.getByLabel('Description')).toHaveValue('Keep this draft')
   expect(writes).toBe(0)
   await dialog.getByLabel('Title', { exact: true }).fill('Validated task')

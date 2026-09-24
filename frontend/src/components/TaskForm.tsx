@@ -1,6 +1,6 @@
 import { useState, type SubmitEvent } from 'react'
 import { getApiErrorMessage } from '@/api/session'
-import { taskInputSchema, type Task } from '@/api/tasks'
+import { taskInputSchema, type Task, type TaskInput } from '@/api/tasks'
 import { useTaskContext } from '@/contexts/TaskContext'
 import { useUserOptions } from '@/hooks/useUserOptions'
 import {
@@ -21,7 +21,9 @@ type TaskFormProps = {
 
 export function TaskForm({ task }: TaskFormProps) {
   const { save, remove, closeEditor } = useTaskContext()
-  const [validationError, setValidationError] = useState('')
+  const [validationErrors, setValidationErrors] = useState<
+    Partial<Record<keyof TaskInput, string>>
+  >({})
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [assignee, setAssignee] = useState<number | 'unassigned'>(
     task?.assigned_to ?? 'unassigned',
@@ -40,10 +42,14 @@ export function TaskForm({ task }: TaskFormProps) {
       assigned_to: assignee === 'unassigned' ? null : assignee,
     })
     if (!result.success) {
-      setValidationError(result.error.issues[0].message)
+      setValidationErrors(
+        Object.fromEntries(
+          result.error.issues.map((issue) => [issue.path[0], issue.message]),
+        ),
+      )
       return
     }
-    setValidationError('')
+    setValidationErrors({})
     remove.reset()
     save.mutate(result.data)
   }
@@ -55,7 +61,7 @@ export function TaskForm({ task }: TaskFormProps) {
 
   function handleDelete() {
     if (task) {
-      setValidationError('')
+      setValidationErrors({})
       save.reset()
       remove.mutate(task.id)
     }
@@ -73,6 +79,7 @@ export function TaskForm({ task }: TaskFormProps) {
           <Input
             label="Title"
             name="title"
+            error={validationErrors.title}
             required
             maxLength={200}
             defaultValue={task?.title ?? ''}
@@ -81,12 +88,14 @@ export function TaskForm({ task }: TaskFormProps) {
           <Textarea
             label="Description"
             name="description"
+            error={validationErrors.description}
             rows={3}
             defaultValue={task?.description ?? ''}
           />
           <Input
             label="Due date"
             name="due_date"
+            error={validationErrors.due_date}
             type="date"
             max="9999-12-31"
             defaultValue={task?.due_date ?? ''}
@@ -94,6 +103,7 @@ export function TaskForm({ task }: TaskFormProps) {
           <div className="min-w-0 space-y-2">
             <Select
               label="Assigned to"
+              error={validationErrors.assigned_to}
               value={assignee}
               onChange={setAssignee}
               options={assigneeOptions}
@@ -113,9 +123,9 @@ export function TaskForm({ task }: TaskFormProps) {
             ) : null}
           </div>
         </Fieldset>
-        {validationError || save.error ? (
+        {save.error ? (
           <p role="alert" className="text-red-700">
-            {validationError || getApiErrorMessage(save.error)}
+            {getApiErrorMessage(save.error)}
           </p>
         ) : null}
         <div className="flex flex-wrap justify-end gap-3 border-t border-gray-200 pt-4">

@@ -43,11 +43,16 @@ test('rejects a whitespace username and clears the error after correction', asyn
   await user.type(screen.getByLabelText('Password'), ' secret ')
   await user.click(screen.getByRole('button', { name: 'Sign in' }))
   expect(screen.getByRole('alert')).toHaveTextContent('Enter your username.')
+  expect(screen.getByLabelText('Username')).toBeInvalid()
+  expect(screen.getByLabelText('Username')).toHaveAccessibleDescription('Enter your username.')
+  expect(screen.getByLabelText('Password')).toBeValid()
   expect(onSignIn).not.toHaveBeenCalled()
   await user.clear(screen.getByLabelText('Username'))
   await user.type(screen.getByLabelText('Username'), 'ana')
   await user.click(screen.getByRole('button', { name: 'Sign in' }))
   expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  expect(screen.getByLabelText('Username')).toBeValid()
+  expect(screen.getByLabelText('Username')).not.toHaveAccessibleDescription()
   expect(onSignIn).toHaveBeenCalledExactlyOnceWith({
     username: 'ana',
     password: ' secret ',

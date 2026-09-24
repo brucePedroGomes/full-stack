@@ -19,7 +19,9 @@ export function LoginForm({
   error,
   notice,
 }: LoginFormProps): ReactElement {
-  const [validationError, setValidationError] = useState('')
+  const [validationErrors, setValidationErrors] = useState<
+    Partial<Record<keyof Credentials, string>>
+  >({})
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -27,10 +29,14 @@ export function LoginForm({
       Object.fromEntries(new FormData(event.currentTarget)),
     )
     if (!result.success) {
-      setValidationError(result.error.issues[0].message)
+      setValidationErrors(
+        Object.fromEntries(
+          result.error.issues.map((issue) => [issue.path[0], issue.message]),
+        ),
+      )
       return
     }
-    setValidationError('')
+    setValidationErrors({})
     onSignIn(result.data)
   }
 
@@ -46,6 +52,7 @@ export function LoginForm({
         <Input
           label="Username"
           name="username"
+          error={validationErrors.username}
           autoComplete="username"
           autoCapitalize="none"
           required
@@ -53,13 +60,14 @@ export function LoginForm({
         <Input
           label="Password"
           name="password"
+          error={validationErrors.password}
           type="password"
           autoComplete="current-password"
           required
         />
-        {validationError || error ? (
+        {error ? (
           <p role="alert" className="text-red-700">
-            {validationError || getApiErrorMessage(error)}
+            {getApiErrorMessage(error)}
           </p>
         ) : null}
         <Button
