@@ -1,6 +1,14 @@
 # Local development only: run docker compose up -d --build --wait.
 name: challenge
 
+x-telemetry: &telemetry
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
+  OTEL_RESOURCE_ATTRIBUTES: service.namespace=challenge,deployment.environment.name=local
+  OTEL_SEMCONV_STABILITY_OPT_IN: http
+  OTEL_METRIC_EXPORT_INTERVAL: "10000"
+  OTEL_TRACES_SAMPLER: parentbased_always_on
+  OTEL_PYTHON_DJANGO_EXCLUDED_URLS: /health/.*,/static/.*
+
 x-app: &app
   build: .
   volumes:
@@ -15,9 +23,13 @@ x-app: &app
 services:
   web:
     <<: *app
+    environment:
+      <<: *telemetry
+      OTEL_SERVICE_NAME: challenge-web
     command: >-
       sh -c 'python manage.py check &&
       exec gunicorn config.wsgi:application
+      --config python:config.gunicorn
       --bind 0.0.0.0:8000 --reload
       --access-logfile - --error-logfile -'
     ports:
@@ -35,8 +47,35 @@ services:
 
   worker:
     <<: *app
+    environment:
+      <<: *telemetry
+      OTEL_SERVICE_NAME: challenge-worker
     command: celery -A config worker --loglevel=INFO --concurrency=2
     restart: unless-stopped
+
+  lgtm:
+    image: grafana/otel-lgtm:0.33.1
+    stop_grace_period: 45s
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      LGTM_SHUTDOWN_TIMEOUT_SECONDS: "30"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in backend/.env}
+      GF_USERS_DEFAULT_THEME: dark
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /otel-lgtm/dashboards/challenge.json
+    volumes:
+      - lgtm_data:/data
+      # Tempo 3 keeps recent-trace recovery files outside /data.
+      - tempo_data:/var/tempo
+      - ./observability/dashboards.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/challenge.yaml:ro
+      - ./observability/challenge.json:/otel-lgtm/dashboards/challenge.json:ro
+    healthcheck:
+      test: ["CMD", "/otel-lgtm/docker/healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   redis:
     image: redis:7-alpine
@@ -69,6 +108,8 @@ services:
       start_period: 10s
 
 volumes:
+  lgtm_data:
+  tempo_data:
   redis_data:
   postgres_data:
     name: challenge-postgres-data
