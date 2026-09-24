@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { SessionExpiredError, type Session } from '@/api/session'
-import { getUserName, usersQuery, type UserSummary } from '@/api/users'
+import { getUserName, type UserSummary } from '@/api/users'
+import { useUsers } from './useUsers'
 
 const emptyUsers: UserSummary[] = []
 
@@ -10,7 +10,7 @@ export function useUserOptions(
   onSessionExpired: (message: string) => void,
   selectedUser?: UserSummary | null,
 ) {
-  const { data, error, isPending, refetch } = useQuery(usersQuery(session))
+  const { data, error, isPending, refetch } = useUsers(session)
   const users = data ?? emptyUsers
   const options = users.map((user) => ({ value: user.id, label: getUserName(user) }))
   if (selectedUser && !users.some((user) => user.id === selectedUser.id)) {

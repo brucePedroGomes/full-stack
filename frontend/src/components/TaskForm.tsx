@@ -1,18 +1,11 @@
 import { useCallback, useEffect, useState, type SubmitEvent } from 'react'
-import { useMutation } from '@tanstack/react-query'
 import {
   getApiErrorMessage,
   SessionExpiredError,
   type Session,
 } from '@/api/session'
-import {
-  createTask,
-  deleteTask,
-  taskInputSchema,
-  updateTask,
-  type Task,
-  type TaskInput,
-} from '@/api/tasks'
+import { taskInputSchema, type Task } from '@/api/tasks'
+import { useTaskMutations } from '@/hooks/useTasks'
 import { useUserOptions } from '@/hooks/useUserOptions'
 import {
   Button,
@@ -51,15 +44,7 @@ export function TaskForm({
     { value: 'unassigned', label: 'Unassigned' },
     ...users.options,
   ]
-  const save = useMutation({
-    mutationFn: (values: TaskInput) =>
-      task ? updateTask(session, task.id, values) : createTask(session, values),
-    onSuccess: onSaved,
-  })
-  const remove = useMutation({
-    mutationFn: (id: number) => deleteTask(session, id),
-    onSuccess: onSaved,
-  })
+  const { save, remove } = useTaskMutations(session, task, onSaved)
   const busy = save.isPending || remove.isPending
   const error = save.error || remove.error
   const { mutate: saveTask, reset: resetSave } = save

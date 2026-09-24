@@ -1,55 +1,12 @@
-import { useCallback, useState, type ReactElement } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  getAccount,
-  getApiErrorMessage,
-  sessionQuery,
-  signIn,
-  signOut,
-  type Credentials,
-} from './api/session'
+import type { ReactElement } from 'react'
+import { getApiErrorMessage } from './api/session'
+import { useSession } from './hooks/useSession'
 import { LoginForm } from './components/LoginForm'
 import { TaskPage } from './components/TaskPage'
 import { Button } from './components/ui'
 
 export default function App(): ReactElement {
-  const client = useQueryClient()
-  const session = useQuery(sessionQuery)
-  const [notice, setNotice] = useState('')
-  const endSession = useCallback(
-    (message: string) => {
-      client.setQueryData(sessionQuery.queryKey, null)
-      client.removeQueries({ queryKey: ['tasks'] })
-      client.removeQueries({ queryKey: ['users'] })
-      setNotice(message)
-    },
-    [client],
-  )
-  const login = useMutation({
-    networkMode: 'always',
-    mutationFn: async (values: Credentials) => {
-      const session = await signIn(values.username, values.password)
-      return { session, account: await getAccount(session) }
-    },
-    onSuccess: (data) => {
-      client.setQueryData(sessionQuery.queryKey, data)
-      setNotice('')
-    },
-  })
-  const logout = useMutation({
-    networkMode: 'always',
-    mutationFn: signOut,
-    onSuccess: () => endSession('You have signed out.'),
-  })
-  const { mutate: loginUser } = login
-  const { mutate: logoutUser } = logout
-  const handleSignIn = useCallback(
-    (values: Credentials) => {
-      loginUser(values)
-    },
-    [loginUser],
-  )
-  const handleSignOut = useCallback(() => logoutUser(), [logoutUser])
+  const { session, login, logout, notice, signIn, signOut, endSession } = useSession()
 
   if (session.isPending)
     return (
@@ -60,7 +17,7 @@ export default function App(): ReactElement {
   if (!session.data) {
     return (
       <LoginForm
-        onSignIn={handleSignIn}
+        onSignIn={signIn}
         pending={login.isPending}
         error={login.error || session.error}
         notice={notice}
@@ -76,7 +33,7 @@ export default function App(): ReactElement {
           <span>{session.data.account.username}</span>
           <Button
             disabled={logout.isPending}
-            onClick={handleSignOut}
+            onClick={signOut}
           >
             {logout.isPending ? 'Signing out...' : 'Sign out'}
           </Button>

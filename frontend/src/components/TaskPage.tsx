@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getApiErrorMessage,
   SessionExpiredError,
@@ -7,12 +6,11 @@ import {
 } from '@/api/session'
 import {
   defaultFilters,
-  tasksQuery,
-  updateTaskStatus,
   type Task,
   type TaskFilters as Filters,
   type TaskStatus,
 } from '@/api/tasks'
+import { useTasks } from '@/hooks/useTasks'
 import { Pagination } from './Pagination'
 import { TaskFilters } from './TaskFilters'
 import { TaskForm } from './TaskForm'
@@ -28,19 +26,19 @@ export function TaskPage({
   account,
   onSessionExpired,
 }: TaskPageProps) {
-  const client = useQueryClient()
   const [filters, setFilters] = useState(defaultFilters)
   const [page, setPage] = useState(1)
   const [editor, setEditor] = useState<{ task: Task | null } | null>(null)
-  const tasks = useQuery(tasksQuery(session, account.id, filters, page))
-  const status = useMutation({
-    mutationFn: ({ id, value }: { id: number; value: TaskStatus }) =>
-      updateTaskStatus(session, id, value),
-    onSuccess: async () => {
-      if (filters.status !== 'all') setPage(1)
-      await client.invalidateQueries({ queryKey: ['tasks', account.id] })
-    },
-  })
+  const handleStatusChanged = useCallback(() => {
+    if (filters.status !== 'all') setPage(1)
+  }, [filters.status])
+  const { tasks, status, refresh } = useTasks(
+    session,
+    account.id,
+    filters,
+    page,
+    handleStatusChanged,
+  )
   const error = tasks.error || status.error
   const { mutate: changeStatus, reset: resetStatus } = status
   const { refetch } = tasks
@@ -52,8 +50,8 @@ export function TaskPage({
   const handleSaved = useCallback(async () => {
     setEditor(null)
     setPage(1)
-    await client.invalidateQueries({ queryKey: ['tasks', account.id] })
-  }, [client, account.id])
+    await refresh()
+  }, [refresh])
   const handleNewTask = useCallback(() => setEditor({ task: null }), [])
   const handleEditTask = useCallback((task: Task) => setEditor({ task }), [])
   const handleCloseEditor = useCallback(() => setEditor(null), [])
