@@ -1,0 +1,24 @@
+# Dev mode (make dev): hot reload for Django and Vite.
+# The backend dev stack comes from backend/compose.yaml. This file adds the frontend.
+name: challenge
+
+include:
+  - path: backend/compose.yaml
+    env_file: backend/.env
+
+services:
+  frontend:
+    build:
+      context: frontend
+      target: dev
+    environment:
+      API_PROXY_TARGET: http://web:8000
+    volumes:
+      - ./frontend:/app
+      # Keep the container's own node_modules, not the host copy.
+      - /app/node_modules
+    ports:
+      - "127.0.0.1:5173:5173"
+    depends_on:
+      web:
+        condition: service_healthy

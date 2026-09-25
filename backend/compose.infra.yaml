@@ -1,0 +1,64 @@
+# Local services for dev and prod-local: database, cache and job queue, and monitoring.
+# Included by backend/compose.yaml (dev) and ../compose.prod-local.yaml (prod-local).
+
+services:
+  lgtm:
+    image: grafana/otel-lgtm:0.33.1
+    stop_grace_period: 45s
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      LGTM_SHUTDOWN_TIMEOUT_SECONDS: "30"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in backend/.env}
+      GF_USERS_DEFAULT_THEME: dark
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /otel-lgtm/dashboards/challenge.json
+    volumes:
+      - lgtm_data:/data
+      # Tempo 3 keeps recent-trace recovery files outside /data.
+      - tempo_data:/var/tempo
+      - ./observability/dashboards.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/challenge.yaml:ro
+      - ./observability/challenge.json:/otel-lgtm/dashboards/challenge.json:ro
+    healthcheck:
+      test: ["CMD", "/otel-lgtm/docker/healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${DB_NAME:?Set DB_NAME in backend/.env}
+      POSTGRES_USER: ${DB_USER:?Set DB_USER in backend/.env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in backend/.env}
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5439}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  lgtm_data:
+  tempo_data:
+  redis_data:
+  postgres_data:
+    name: challenge-postgres-data

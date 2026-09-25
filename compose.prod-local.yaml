@@ -1,9 +1,14 @@
-# Local development only: run docker compose up -d --build --wait.
+# Prod-local mode (make prod-local). LOCAL ONLY: this is NOT a production deploy.
+# It simulates production on your computer, for a clean test: built images,
+# no code mounts, no hot reload. nginx serves the frontend build and sends
+# /api, /admin, and /static to Django. Django settings come from backend/.env.
+# For real production, see docs/backend/deploy.md.
 name: challenge
 
-# Postgres, Redis, and Grafana. Shared with prod-local mode (../compose.prod-local.yaml).
+# Local Postgres, Redis, and Grafana: the same as in dev mode.
 include:
-  - compose.infra.yaml
+  - path: backend/compose.infra.yaml
+    env_file: backend/.env
 
 x-telemetry: &telemetry
   OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
@@ -13,11 +18,9 @@ x-telemetry: &telemetry
   OTEL_TRACES_SAMPLER: parentbased_always_on
   OTEL_PYTHON_DJANGO_EXCLUDED_URLS: /health/.*,/static/.*
 
-x-app: &app
-  build: .
-  volumes:
-    - .:/app
-  env_file: .env
+x-backend: &backend
+  build: backend
+  env_file: backend/.env
   depends_on:
     postgres:
       condition: service_healthy
@@ -25,17 +28,12 @@ x-app: &app
       condition: service_healthy
 
 services:
+  # Uses the Dockerfile's default command: gunicorn, without --reload.
   web:
-    <<: *app
+    <<: *backend
     environment:
       <<: *telemetry
       OTEL_SERVICE_NAME: challenge-web
-    command: >-
-      sh -c 'python manage.py check &&
-      exec gunicorn config.wsgi:application
-      --config python:config.gunicorn
-      --bind 0.0.0.0:8000 --reload
-      --access-logfile - --error-logfile -'
     ports:
       - "127.0.0.1:8000:8000"
     healthcheck:
@@ -50,9 +48,19 @@ services:
       start_period: 10s
 
   worker:
-    <<: *app
+    <<: *backend
     environment:
       <<: *telemetry
       OTEL_SERVICE_NAME: challenge-worker
     command: celery -A config worker --loglevel=INFO --concurrency=2
     restart: unless-stopped
+
+  frontend:
+    build:
+      context: frontend
+      target: prod
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      web:
+        condition: service_healthy
