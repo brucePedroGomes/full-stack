@@ -7,6 +7,7 @@ from django.core import mail
 from django.db import transaction
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from kombu.exceptions import OperationalError
 from rest_framework.test import APITestCase
 
 from tasks.models import Task
@@ -44,6 +45,19 @@ class AssignmentQueueTests(APITestCase):
         callbacks[0]()
         self.enqueue.assert_called_once_with(response.data['id'], self.assignee.pk)
         self.assertEqual(len(mail.outbox), 0)
+
+    def test_redis_error_is_logged_and_keeps_the_saved_task(self):
+        """A broker outage must not turn a saved task into a server error."""
+        self.enqueue.side_effect = OperationalError('Redis is down')
+        with self.assertLogs(level='ERROR'):
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self.client.post(
+                    reverse('tasks:list'),
+                    {'title': 'Report', 'assigned_to': self.assignee.pk}, format='json',
+                )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(Task.objects.filter(pk=response.data['id']).exists())
 
     def test_patch_and_put_queue_new_assignment(self):
         """Both editing routes notify a newly selected assignee."""

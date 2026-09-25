@@ -40,9 +40,10 @@ class TaskSerializer(serializers.ModelSerializer[Task]):
     def _queue_assignment_email(task: Task) -> None:
         """Pass IDs to Redis; the worker loads the saved task."""
         if task.assigned_to is not None and task.assigned_to.email:
-            transaction.on_commit(partial(
-                send_assignment_email.delay, task.pk, task.assigned_to.pk,
-            ))
+            transaction.on_commit(
+                partial(send_assignment_email.delay, task.pk, task.assigned_to.pk),
+                robust=True,
+            )
 
 
 class TaskCreateSerializer(TaskSerializer):
