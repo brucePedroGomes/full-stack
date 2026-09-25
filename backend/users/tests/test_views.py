@@ -23,13 +23,13 @@ class UserListViewTests(APITestCase):
     def test_paginates_the_directory(self) -> None:
         """Fetch separate pages without skipping or repeating users."""
         users = get_user_model().objects.bulk_create([
-            get_user_model()(username=f'user{index:03d}') for index in range(23)
+            get_user_model()(username=f'user{index:03d}') for index in range(13)
         ])
         self.client.force_authenticate(user=users[0])
         first = self.client.get(reverse('users:list'))
         second = self.client.get(reverse('users:list'), {'page': 2})
-        self.assertEqual(first.data['count'], 23)
-        self.assertEqual(len(first.data['results']), 20)
+        self.assertEqual(first.data['count'], 13)
+        self.assertEqual(len(first.data['results']), 10)
         self.assertEqual(len(second.data['results']), 3)
         self.assertIsNotNone(first.data['next'])
         self.assertIsNone(second.data['next'])
