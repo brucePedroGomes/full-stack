@@ -27,10 +27,6 @@ TEAM = (
     ('pedro', 'Pedro', 'Oliveira'),
     ('renata', 'Renata', 'Fernandes'),
 )
-PROJECTS = (
-    'customer portal', 'mobile app', 'billing service', 'team dashboard',
-    'help center', 'onboarding flow', 'reporting API', 'notification service',
-)
 WORK = (
     ('Fix keyboard navigation', 'Check focus order and test every action without a mouse.'),
     ('Review the empty states', 'Explain what happened and provide a useful next step.'),
@@ -80,10 +76,9 @@ class Command(BaseCommand):
         tasks: list[Task] = []
         for index in range(count):
             title, description = random.choice(WORK)
-            project = random.choice(PROJECTS)
             tasks.append(Task(
-                title=f'{title} for the {project} · {index + 1:04d}',
-                description=f'{description}\n\nProject: {project.capitalize()}.',
+                title=f'{title} · {index + 1:04d}',
+                description=description,
                 status=random.choices(Task.Status.values, weights=[20, 25, 25, 10, 20])[0],
                 created_by=random.choice(users),
                 assigned_to=random.choice([*users, None, None]),

@@ -6,7 +6,7 @@ from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
-from tasks.management.commands.seed_demo import DEMO_PASSWORD, TEAM
+from tasks.management.commands.seed_demo import DEMO_PASSWORD, TEAM, WORK
 from tasks.models import Task
 
 
@@ -52,6 +52,17 @@ class SeedDemoTests(TestCase):
         call_command('seed_demo', tasks=1, stdout=out)
 
         self.assertIn(f'Sign in as bruce-gomes with password {DEMO_PASSWORD}', out.getvalue())
+
+    def test_tasks_use_only_the_work_list(self) -> None:
+        """Build titles and descriptions from WORK only: the app has no projects."""
+        call_command('seed_demo', tasks=50, stdout=StringIO())
+
+        titles = {title for title, _description in WORK}
+        descriptions = {description for _title, description in WORK}
+        for task in Task.objects.all():
+            name, _separator, _number = task.title.rpartition(' · ')
+            self.assertIn(name, titles)
+            self.assertIn(task.description, descriptions)
 
     def test_second_run_preserves_edits_and_does_not_duplicate_data(self) -> None:
         """Leave edited demo records untouched on the next run."""
