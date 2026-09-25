@@ -39,8 +39,6 @@ def setup() -> bool:
     PsycopgInstrumentor().instrument()
     RedisInstrumentor().instrument()
     CeleryInstrumentor().instrument()
-    # CPU and memory of this worker process. system.* metrics stay off:
-    # inside a container they would describe the whole host.
     SystemMetricsInstrumentor(
         config={'process.cpu.utilization': None, 'process.memory.usage': None},
     ).instrument()

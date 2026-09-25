@@ -1,5 +1,6 @@
 from datetime import timedelta
 from random import Random
+from typing import NamedTuple
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -9,23 +10,29 @@ from django.utils import timezone
 
 from tasks.models import Task
 
-# (username, first name, last name)
+
+class DemoUser(NamedTuple):
+    username: str
+    first_name: str
+    last_name: str
+
+
 TEAM = (
-    ('bruce-gomes', 'Bruce', 'Gomes'),
-    ('bruno', 'Bruno', 'Costa'),
-    ('carla', 'Carla', 'Santos'),
-    ('daniel', 'Daniel', 'Lima'),
-    ('elisa', 'Elisa', 'Rocha'),
-    ('felipe', 'Felipe', 'Alves'),
-    ('gabriela', 'Gabriela', 'Mendes'),
-    ('henrique', 'Henrique', 'Dias'),
-    ('isabela', 'Isabela', 'Ribeiro'),
-    ('joao', 'Joao', 'Pereira'),
-    ('luiza', 'Luiza', 'Barbosa'),
-    ('marcos', 'Marcos', 'Martins'),
-    ('natalia', 'Natalia', 'Souza'),
-    ('pedro', 'Pedro', 'Oliveira'),
-    ('renata', 'Renata', 'Fernandes'),
+    DemoUser('bruce-gomes', 'Bruce', 'Gomes'),
+    DemoUser('bruno', 'Bruno', 'Costa'),
+    DemoUser('carla', 'Carla', 'Santos'),
+    DemoUser('daniel', 'Daniel', 'Lima'),
+    DemoUser('elisa', 'Elisa', 'Rocha'),
+    DemoUser('felipe', 'Felipe', 'Alves'),
+    DemoUser('gabriela', 'Gabriela', 'Mendes'),
+    DemoUser('henrique', 'Henrique', 'Dias'),
+    DemoUser('isabela', 'Isabela', 'Ribeiro'),
+    DemoUser('joao', 'Joao', 'Pereira'),
+    DemoUser('luiza', 'Luiza', 'Barbosa'),
+    DemoUser('marcos', 'Marcos', 'Martins'),
+    DemoUser('natalia', 'Natalia', 'Souza'),
+    DemoUser('pedro', 'Pedro', 'Oliveira'),
+    DemoUser('renata', 'Renata', 'Fernandes'),
 )
 WORK = (
     ('Fix keyboard navigation', 'Check focus order and test every action without a mouse.'),
@@ -58,18 +65,20 @@ class Command(BaseCommand):
         count = options['tasks']
         if not isinstance(count, int) or count < 1:
             raise CommandError('--tasks must be a positive integer.')
-        usernames = [username for username, _first, _last in TEAM]
+        usernames = [member.username for member in TEAM]
         if User.objects.filter(username__in=usernames).exists():
             self.stdout.write('Demo users already exist. No data was changed.')
             return
 
         users = [
             User.objects.create_user(
-                username=username, email=f'{username}@demo.example',
-                first_name=first, last_name=last,
+                username=member.username,
+                email=f'{member.username}@demo.example',
+                first_name=member.first_name,
+                last_name=member.last_name,
                 password=DEMO_PASSWORD,
             )
-            for username, first, last in TEAM
+            for member in TEAM
         ]
         random = Random(42)
         today = timezone.localdate()

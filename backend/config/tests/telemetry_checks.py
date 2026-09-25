@@ -14,7 +14,7 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import InMemoryLogRecordExporter
 from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export import Histogram, MetricExportResult, MetricsData
+from opentelemetry.sdk.metrics.export import Histogram, MetricExportResult, MetricsData, Sum
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
@@ -122,9 +122,11 @@ class TelemetryChecks(unittest.TestCase):
         }
         self.assertIn('process.cpu.utilization', exported)
         self.assertIn('process.memory.usage', exported)
-        self.assertGreater(exported['process.memory.usage'].data_points[0].value, 0)
-        # Inside a container, system.* metrics would describe the whole host.
-        self.assertEqual([name for name in exported if name.startswith('system.')], [])
+        memory = exported['process.memory.usage']
+        assert isinstance(memory, Sum)
+        self.assertGreater(memory.data_points[0].value, 0)
+        host_metrics = [name for name in exported if name.startswith('system.')]
+        self.assertEqual(host_metrics, [])
 
     def test_telemetry_does_not_start(self) -> None:
         with patch.object(telemetry.OpenTelemetryConfigurator, 'configure') as configure:
