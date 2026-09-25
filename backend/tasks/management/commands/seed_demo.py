@@ -2,19 +2,30 @@ from datetime import timedelta
 from random import Random
 
 from django.conf import settings
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand, CommandError, CommandParser
 from django.db import transaction
 from django.utils import timezone
 
 from tasks.models import Task
 
+# (username, first name, last name)
 TEAM = (
-    ('ana', 'Silva'), ('bruno', 'Costa'), ('carla', 'Santos'),
-    ('daniel', 'Lima'), ('elisa', 'Rocha'), ('felipe', 'Alves'),
-    ('gabriela', 'Mendes'), ('henrique', 'Dias'), ('isabela', 'Ribeiro'),
-    ('joao', 'Pereira'), ('luiza', 'Barbosa'), ('marcos', 'Martins'),
-    ('natalia', 'Souza'), ('pedro', 'Oliveira'), ('renata', 'Fernandes'),
+    ('bruce-gomes', 'Bruce', 'Gomes'),
+    ('bruno', 'Bruno', 'Costa'),
+    ('carla', 'Carla', 'Santos'),
+    ('daniel', 'Daniel', 'Lima'),
+    ('elisa', 'Elisa', 'Rocha'),
+    ('felipe', 'Felipe', 'Alves'),
+    ('gabriela', 'Gabriela', 'Mendes'),
+    ('henrique', 'Henrique', 'Dias'),
+    ('isabela', 'Isabela', 'Ribeiro'),
+    ('joao', 'Joao', 'Pereira'),
+    ('luiza', 'Luiza', 'Barbosa'),
+    ('marcos', 'Marcos', 'Martins'),
+    ('natalia', 'Natalia', 'Souza'),
+    ('pedro', 'Pedro', 'Oliveira'),
+    ('renata', 'Renata', 'Fernandes'),
 )
 PROJECTS = (
     'customer portal', 'mobile app', 'billing service', 'team dashboard',
@@ -34,8 +45,8 @@ WORK = (
     ('Prepare the next usability session', 'Write the main scenarios and list the open questions.'),
     ('Update the integration tests', 'Cover successful requests and expected failure responses.'),
 )
+
 DEMO_PASSWORD = 'Tempo-demo-2026!'
-SEED_GROUP = 'tempo-demo-seed'
 
 
 class Command(BaseCommand):
@@ -51,25 +62,19 @@ class Command(BaseCommand):
         count = options['tasks']
         if not isinstance(count, int) or count < 1:
             raise CommandError('--tasks must be a positive integer.')
-        group, created = Group.objects.get_or_create(name=SEED_GROUP)
-        if not created:
-            renamed = self.rename_users(group)
-            self.stdout.write(f'Renamed {renamed} seed users. Existing tasks were kept.')
-            return
-        usernames = [first for first, _last in TEAM]
+        usernames = [username for username, _first, _last in TEAM]
         if User.objects.filter(username__in=usernames).exists():
-            raise CommandError('A seed username already exists. No data was changed.')
+            self.stdout.write('Demo users already exist. No data was changed.')
+            return
 
         users = [
             User.objects.create_user(
-                username=first, email=f'{first}@demo.example',
-                first_name=first.capitalize(), last_name=last,
+                username=username, email=f'{username}@demo.example',
+                first_name=first, last_name=last,
                 password=DEMO_PASSWORD,
             )
-            for first, last in TEAM
+            for username, first, last in TEAM
         ]
-        for user in users:
-            user.groups.add(group)
         random = Random(42)
         today = timezone.localdate()
         tasks: list[Task] = []
@@ -88,21 +93,5 @@ class Command(BaseCommand):
         Task.objects.bulk_create(tasks, batch_size=500)
         self.stdout.write(self.style.SUCCESS(
             f'Created {len(users)} demo users and {len(tasks)} tasks. '
-            f'Sign in as ana with password {DEMO_PASSWORD}'
+            f'Sign in as bruce-gomes with password {DEMO_PASSWORD}'
         ))
-
-    def rename_users(self, group: Group) -> int:
-        """Upgrade old seed usernames without recreating accounts or tasks."""
-        renamed = 0
-        for first, last in TEAM:
-            user = User.objects.filter(groups=group, username=f'demo.{first}').first()
-            if user is None:
-                continue
-            if User.objects.filter(username=first).exists():
-                raise CommandError(f'The username {first} already exists. No data was changed.')
-            user.username = first
-            user.first_name = user.first_name or first.capitalize()
-            user.last_name = user.last_name or last
-            user.save(update_fields=['username', 'first_name', 'last_name'])
-            renamed += 1
-        return renamed
