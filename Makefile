@@ -34,7 +34,7 @@ dev: backend/.env ## Start dev mode: build, migrate, seed (stops prod-local)
 
 prod-local: backend/.env ## Simulate production locally, not a deploy (stops dev)
 	@echo "==> Starting prod-local mode: built images and nginx, on this computer only."
-	@echo "    This is NOT a production deploy. See docs/backend/deploy.md for that."
+	@echo "    This is NOT a production deploy."
 	@old=$$($(NODE_MODULES_VOLUME)); \
 	$(PROD) up -d --build --wait --remove-orphans && $(REMOVE_OLD_VOLUME)
 	@$(MAKE) --no-print-directory migrate seed

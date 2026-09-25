@@ -2,7 +2,6 @@
 # It simulates production on your computer, for a clean test: built images,
 # no code mounts, no hot reload. nginx serves the frontend build and sends
 # /api, /admin, and /static to Django. Django settings come from backend/.env.
-# For real production, see docs/backend/deploy.md.
 name: challenge
 
 # Local Postgres, Redis, and Grafana: the same as in dev mode.
