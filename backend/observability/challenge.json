@@ -1,7 +1,7 @@
 {
   "uid": "challenge-overview",
   "title": "Challenge \u00b7 Backend",
-  "description": "Django requests, Celery jobs, traces, and application logs.",
+  "description": "Django requests, Celery jobs, CPU and memory, traces, and application logs.",
   "tags": [
     "challenge",
     "django",
@@ -521,6 +521,126 @@
       ]
     },
     {
+      "id": 11,
+      "title": "CPU by process",
+      "description": "Share of all CPUs used by each Gunicorn and Celery worker process.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisBorderShow": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "max by (service_name, worker) (label_replace(process_cpu_utilization_ratio{service_name=~\"challenge-(web|worker)\"}, \"worker\", \"$1\", \"service_instance_id\", \"(.{8}).*\"))",
+          "legendFormat": "{{service_name}} {{worker}}",
+          "range": true
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Memory by process",
+      "description": "Physical memory (RSS) used by each Gunicorn and Celery worker process.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisBorderShow": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "max by (service_name, worker) (label_replace(process_memory_usage_bytes{service_name=~\"challenge-(web|worker)\"}, \"worker\", \"$1\", \"service_instance_id\", \"(.{8}).*\"))",
+          "legendFormat": "{{service_name}} {{worker}}",
+          "range": true
+        }
+      ]
+    },
+    {
       "id": 9,
       "title": "Recent request and task traces",
       "type": "table",
@@ -530,7 +650,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 20,
+        "y": 28,
         "w": 24,
         "h": 8
       },
@@ -573,7 +693,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 28,
+        "y": 36,
         "w": 24,
         "h": 10
       },

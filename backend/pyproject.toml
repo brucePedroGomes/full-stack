@@ -22,6 +22,7 @@ dependencies = [
     "opentelemetry-instrumentation-celery>=0.65b0",
     "opentelemetry-distro>=0.65b0",
     "opentelemetry-instrumentation-logging>=0.65b0",
+    "opentelemetry-instrumentation-system-metrics>=0.65b0",
 ]
 
 [dependency-groups]

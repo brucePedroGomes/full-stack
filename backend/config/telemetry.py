@@ -11,6 +11,7 @@ from opentelemetry.instrumentation.celery import CeleryInstrumentor
 from opentelemetry.instrumentation.logging.handler import LoggingHandler
 from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
 from opentelemetry.instrumentation.redis import RedisInstrumentor
+from opentelemetry.instrumentation.system_metrics import SystemMetricsInstrumentor
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.trace import TracerProvider
@@ -38,6 +39,11 @@ def setup() -> bool:
     PsycopgInstrumentor().instrument()
     RedisInstrumentor().instrument()
     CeleryInstrumentor().instrument()
+    # CPU and memory of this worker process. system.* metrics stay off:
+    # inside a container they would describe the whole host.
+    SystemMetricsInstrumentor(
+        config={'process.cpu.utilization': None, 'process.memory.usage': None},
+    ).instrument()
     _started = True
     return True
 

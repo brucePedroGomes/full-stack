@@ -14,6 +14,9 @@ class TelemetryTests(SimpleTestCase):
     def test_logging_does_not_duplicate_or_export_its_own_errors(self) -> None:
         self.run_check('test_logging_does_not_duplicate_or_export_its_own_errors')
 
+    def test_process_cpu_and_memory_are_exported(self) -> None:
+        self.run_check('test_process_cpu_and_memory_are_exported')
+
     def test_disabled_telemetry_does_not_start(self) -> None:
         self.run_check('test_telemetry_does_not_start', OTEL_SDK_DISABLED='true')
 

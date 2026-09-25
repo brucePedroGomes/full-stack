@@ -109,6 +109,23 @@ class TelemetryChecks(unittest.TestCase):
         self.assertEqual(messages.count('task log'), 1)
         self.assertNotIn('export failed', messages)
 
+    def test_process_cpu_and_memory_are_exported(self) -> None:
+        telemetry.setup()
+        self.flush()
+
+        exported = {
+            metric.name: metric.data
+            for data in self.exported_metrics
+            for resource in data.resource_metrics
+            for scope in resource.scope_metrics
+            for metric in scope.metrics
+        }
+        self.assertIn('process.cpu.utilization', exported)
+        self.assertIn('process.memory.usage', exported)
+        self.assertGreater(exported['process.memory.usage'].data_points[0].value, 0)
+        # Inside a container, system.* metrics would describe the whole host.
+        self.assertEqual([name for name in exported if name.startswith('system.')], [])
+
     def test_telemetry_does_not_start(self) -> None:
         with patch.object(telemetry.OpenTelemetryConfigurator, 'configure') as configure:
             gunicorn.post_fork(None, None)
