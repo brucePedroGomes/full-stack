@@ -70,6 +70,28 @@ test('returns to login when the session expires during a status change', async (
   await expect(page.getByRole('region', { name: 'Task board' })).toHaveCount(0)
 })
 
+test('returns to login when the session expires during a quick add', async ({
+  page,
+  workspace,
+}) => {
+  /** Each column runs its own quick add, and it still reports an expired session. */
+  await workspace.open({ tasks: [] })
+  await page.route('**/api/tasks/', (route) =>
+    route.request().method() === 'POST' ? route.fulfill({ status: 401 }) : route.fallback(),
+  )
+  await page.route('**/api/auth/browser/token/', (route) =>
+    route.fulfill({ status: 401 }),
+  )
+  const todo = page.getByRole('region', { name: 'To do', exact: true })
+  await todo.getByRole('button', { name: 'Add a card', exact: true }).click()
+  await todo.getByLabel('Title for a new To do card').fill('Buy milk')
+  await todo.getByLabel('Title for a new To do card').press('Enter')
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
+  await expect(page.getByRole('status')).toHaveText(
+    'Your session has expired. Please sign in again.',
+  )
+})
+
 test('returns to login when the session expires while loading users', async ({
   page,
   workspace,

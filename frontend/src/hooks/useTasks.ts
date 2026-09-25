@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
+  mutationOptions,
   useMutation,
   useMutationState,
   useQuery,
@@ -72,7 +73,7 @@ export function useTasks({ session, account, onSessionExpired }: UseTasksOptions
     [mutateMove],
   )
 
-  const quickAdd = useMutation({
+  const quickAddOptions = mutationOptions({
     mutationFn: ({ title, status }: { title: string; status: TaskStatus }) =>
       createTask(session, {
         title,
@@ -138,7 +139,6 @@ export function useTasks({ session, account, onSessionExpired }: UseTasksOptions
 
   const sessionError = [
     move.error,
-    quickAdd.error,
     save.error,
     remove.error,
     users.error,
@@ -157,7 +157,7 @@ export function useTasks({ session, account, onSessionExpired }: UseTasksOptions
     moveTask,
     movingTaskIds,
     notice,
-    quickAdd,
+    quickAddOptions,
     users,
     editor,
     newTask,

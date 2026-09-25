@@ -1,4 +1,5 @@
 import { useState, type KeyboardEvent, type SubmitEvent } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { getApiErrorMessage } from '@/api/session'
 import type { TaskStatus } from '@/api/tasks'
 import { useTaskContext } from '@/contexts/TaskContext'
@@ -10,10 +11,9 @@ type QuickAddProps = {
 }
 
 export function QuickAdd({ status, label }: QuickAddProps) {
-  const { quickAdd } = useTaskContext()
+  const { quickAddOptions } = useTaskContext()
+  const quickAdd = useMutation(quickAddOptions)
   const [open, setOpen] = useState(false)
-  const addingToThisColumn = quickAdd.variables?.status === status
-  const saving = quickAdd.isPending && addingToThisColumn
 
   function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -48,14 +48,14 @@ export function QuickAdd({ status, label }: QuickAddProps) {
         placeholder="Card title"
         autoFocus
       />
-      {quickAdd.error && addingToThisColumn ? (
+      {quickAdd.error ? (
         <p role="alert" className="text-sm text-red-700">
           {getApiErrorMessage(quickAdd.error)}
         </p>
       ) : null}
       <div className="flex gap-2">
-        <Button type="submit" variant="primary" disabled={saving}>
-          {saving ? 'Adding...' : 'Add card'}
+        <Button type="submit" variant="primary" disabled={quickAdd.isPending}>
+          {quickAdd.isPending ? 'Adding...' : 'Add card'}
         </Button>
         <Button onClick={() => setOpen(false)}>Cancel</Button>
       </div>

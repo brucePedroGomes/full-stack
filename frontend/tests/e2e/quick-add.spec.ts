@@ -58,3 +58,38 @@ test('confirms a new card even when a filter hides it', async ({ page, workspace
   await expect(page.getByRole('status').filter({ hasText: 'Added' })).toHaveText('Added "Hidden card".')
   await expect(todo.getByRole('heading', { name: 'Hidden card' })).toHaveCount(0)
 })
+
+test('keeps a column busy until its own card is saved', async ({ page, workspace }) => {
+  /** Review focus: adding in a second column must not hide the first save. */
+  await workspace.open({ tasks: [] })
+  let saveFirstCard!: () => void
+  const firstCardWaits = new Promise<void>((resolve) => {
+    saveFirstCard = resolve
+  })
+  await page.route(
+    (url) => url.pathname === '/api/tasks/',
+    async (route) => {
+      if (route.request().postDataJSON()?.title === 'Buy milk') await firstCardWaits
+      await route.fallback()
+    },
+  )
+  const todo = page.getByRole('region', { name: 'To do', exact: true })
+  const todoTitle = todo.getByLabel('Title for a new To do card')
+  const done = page.getByRole('region', { name: 'Done', exact: true })
+  const doneTitle = done.getByLabel('Title for a new Done card')
+
+  await todo.getByRole('button', { name: 'Add a card', exact: true }).click()
+  await todoTitle.fill('Buy milk')
+  await todoTitle.press('Enter')
+  await expect(todo.getByRole('button', { name: 'Adding...' })).toBeDisabled()
+
+  await done.getByRole('button', { name: 'Add a card', exact: true }).click()
+  await doneTitle.fill('Pay bills')
+  await doneTitle.press('Enter')
+  await expect(done.getByRole('heading', { name: 'Pay bills' })).toBeVisible()
+  await expect(todo.getByRole('button', { name: 'Adding...' })).toBeDisabled()
+
+  saveFirstCard()
+  await expect(todo.getByRole('heading', { name: 'Buy milk' })).toBeVisible()
+  await expect(todoTitle).toHaveValue('')
+})
