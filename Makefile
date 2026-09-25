@@ -13,7 +13,7 @@ NODE_MODULES_VOLUME = docker inspect -f '{{range .Mounts}}{{if eq .Destination "
 REMOVE_OLD_VOLUME = { [ -z "$$old" ] || [ "$$old" = "$$($(NODE_MODULES_VOLUME))" ] || docker volume rm "$$old" >/dev/null; }
 
 .DEFAULT_GOAL := help
-.PHONY: help install dev prod-local down logs ps migrate seed urls
+.PHONY: help install dev prod-local down logs ps migrate seed reset urls
 
 help: ## Show all commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-11s %s\n", $$1, $$2}'
@@ -60,6 +60,13 @@ seed: ## Create demo data if missing (only when DEBUG=true)
 	if [ $$status -eq 0 ]; then $(DEV) exec -T web python manage.py seed_demo; \
 	elif [ $$status -eq 10 ]; then echo "Skipped demo data: DEBUG is false in backend/.env."; \
 	else echo "Could not check DEBUG in the web container (exit $$status). See: make logs s=web"; exit 1; fi
+
+reset: ## Delete all data in the database (asks first)
+	@printf 'This deletes ALL data in the local database, including admin users. Type "yes" to continue: '; \
+	read answer; \
+	if [ "$$answer" != yes ]; then echo "Cancelled. No data was changed."; exit 0; fi; \
+	$(DEV) exec -T web python manage.py flush --noinput && \
+	echo "Done. To create the admin user again, see \"Admin user\" in README.md."
 
 urls: ## Show the app, API, and Grafana links
 	@echo ""
