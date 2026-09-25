@@ -58,11 +58,11 @@ console email.
 
 ## Review and testing
 
-- [Testing](docs/backend/testing.md): commands, coverage, and the real app test.
+- [Testing](docs/backend/testing.md): two commands and coverage.
+- [How I use AI](docs/ai.md): research, review, and a small example.
 - [API documentation choice](docs/backend/drf-spectacular.md): why I use drf-spectacular.
 
-After starting the app, run `make install`, `make test`, and `make check-backend`.
-Backend coverage must stay at or above 80%. The testing guide explains the browser checks.
+With `make dev` running and `make install` done, run `make test-backend` or `make test-frontend`.
 
 ## Admin user
 
@@ -90,7 +90,7 @@ It asks for an email and a password. The same command works in both modes.
 The containers do not need local packages. Your IDE does, to find imports:
 
 ```sh
-make install   # creates backend/.venv and frontend/node_modules
+make install   # installs local packages and the test browser
 ```
 
 It needs [uv](https://docs.astral.sh/uv/) (it downloads Python 3.14 by itself) and

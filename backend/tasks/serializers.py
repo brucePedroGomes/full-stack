@@ -2,6 +2,7 @@ from functools import partial
 from typing import Any
 
 from django.db import transaction
+from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 
 from users.serializers import UserSummarySerializer
@@ -28,8 +29,13 @@ class TaskSerializer(serializers.ModelSerializer[Task]):
         self._queue_assignment_email(task)
         return task
 
+    @transaction.atomic
     def update(self, instance: Task, validated_data: dict[str, Any]) -> Task:
-        """Notify only when the assignee changes."""
+        """Lock the current row so overlapping edits keep unrelated changes."""
+        instance = get_object_or_404(
+            Task.objects.select_related('assigned_to').select_for_update(of=('self',)),
+            pk=instance.pk,
+        )
         previous_assignee = instance.assigned_to
         task = super().update(instance, validated_data)
         if task.assigned_to != previous_assignee:
@@ -55,6 +61,12 @@ class TaskStatusSerializer(serializers.ModelSerializer[Task]):
     class Meta:
         model = Task
         fields = ['status']
+
+    @transaction.atomic
+    def update(self, instance: Task, validated_data: dict[str, Any]) -> Task:
+        """Do not overwrite newer fields or recreate a concurrently deleted row."""
+        instance = get_object_or_404(Task.objects.select_for_update(), pk=instance.pk)
+        return super().update(instance, validated_data)
 
     def validate(self, attrs: dict[str, str]) -> dict[str, str]:
         """Require status even when PATCH makes serializer fields optional."""

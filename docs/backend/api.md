@@ -47,6 +47,8 @@ curl -s http://localhost:8000/api/tasks/123/status/ \
 
 The normal detail endpoint treats `status` as read-only. Use the status endpoint above to mark an existing task done.
 
+Updates load and lock the current task before saving. This keeps changes to other fields when two requests overlap. If both requests change the same field, the last save wins. If the task was deleted before the update gets the lock, the update returns 404.
+
 | Query parameter | Meaning |
 |---|---|
 | `status=done` | One status. |

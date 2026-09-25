@@ -21,39 +21,32 @@ NODE_MODULES_VOLUME = docker inspect -f '{{range .Mounts}}{{if eq .Destination "
 REMOVE_OLD_VOLUME = { [ -z "$$old" ] || [ "$$old" = "$$($(NODE_MODULES_VOLUME))" ] || docker volume rm "$$old" >/dev/null; }
 
 .DEFAULT_GOAL := help
-.PHONY: help install dev prod-local down logs ps migrate seed reset urls test test-backend test-frontend test-e2e test-live check-backend
+.PHONY: help install dev prod-local down logs ps migrate seed reset urls test-backend test-frontend
 
 help: ## Show all commands
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
 
-install: ## Install local packages for the IDE (backend/.venv, frontend/node_modules)
+install: ## Install local packages and the test browser
 	@command -v uv >/dev/null || { echo "Missing uv. Install it: https://docs.astral.sh/uv/getting-started/installation/"; exit 1; }
 	@command -v npm >/dev/null || { echo "Missing Node.js. Install Node $$(cat frontend/.nvmrc) (for example with nvm)."; exit 1; }
 	cd backend && uv sync --locked
 	cd frontend && npm ci
+	cd frontend && npx playwright install chromium
 
-test: test-backend test-frontend ## Run backend coverage and frontend unit tests (start the app first)
-
-test-backend: backend/.env ## Run backend tests and enforce 80% coverage (needs uv and local services)
+test-backend: backend/.env ## Run backend tests, coverage, and checks
 	$(TEST_PYTHON) coverage erase
 	$(TEST_PYTHON) coverage run manage.py test --settings=config.test_settings --noinput
 	$(TEST_PYTHON) coverage combine
+	$(TEST_PYTHON) coverage html --fail-under=0
+	$(TEST_PYTHON) coverage xml --fail-under=0
 	$(TEST_PYTHON) coverage report
-	$(TEST_PYTHON) coverage html
-	$(TEST_PYTHON) coverage xml
-
-check-backend: backend/.env ## Check Python types, migration files, and the OpenAPI schema
 	cd backend && uv run --locked pyright
 	$(TEST_PYTHON) python manage.py makemigrations --check --dry-run --settings=config.test_settings
 	$(TEST_PYTHON) python manage.py spectacular --validate --fail-on-warn --file /tmp/challenge-schema.yaml --settings=config.test_settings
 
-test-frontend: ## Run frontend unit tests, lint, and the production build
+test-frontend: ## Run frontend tests, coverage, lint, and build (needs make dev)
 	cd frontend && npm test && npm run lint && npm run build
-
-test-e2e: ## Run browser tests with a simulated API (install Playwright Chromium first)
 	cd frontend && npm run test:e2e
-
-test-live: ## Test real CRUD against the running, seeded local app (creates and deletes one task)
 	cd frontend && npm run test:live
 
 dev: backend/.env ## Start dev mode: build, migrate, seed (stops prod-local)

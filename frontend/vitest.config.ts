@@ -11,6 +11,11 @@ export default mergeConfig(
       mockReset: true,
       restoreMocks: true,
       isolate: true,
+      coverage: {
+        provider: 'v8',
+        include: ['src/**/*.{ts,tsx}'],
+        reporter: ['text', 'html'],
+      },
     },
   }),
 )
