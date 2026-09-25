@@ -5,7 +5,7 @@ It uses [Django](django.md) with [Django REST framework](https://www.django-rest
 
 - [Simple JWT](https://django-rest-framework-simplejwt.readthedocs.io/en/latest/)
 - [django-filter](https://django-filter.readthedocs.io/en/stable/)
-- [drf-spectacular](https://drf-spectacular.readthedocs.io/en/latest/)
+- [drf-spectacular](drf-spectacular.md)
 - [Pydantic](https://docs.pydantic.dev/latest/)
 - [Argon2](https://docs.djangoproject.com/en/6.1/topics/auth/passwords/#using-argon2-with-django)
 - [PostgreSQL](https://www.postgresql.org/docs/17/)

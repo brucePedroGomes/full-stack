@@ -28,6 +28,19 @@ dependencies = [
 [dependency-groups]
 dev = [
     "celery-types>=0.26",
+    "coverage[toml]>=7.10,<8",
     "djangorestframework-stubs>=3.18.1",
     "pyright>=1.1.414",
 ]
+
+[tool.coverage.run]
+source = ["config", "tasks", "users"]
+branch = true
+relative_files = true
+patch = ["subprocess"]
+omit = ["*/tests/*", "*/migrations/*"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+precision = 2

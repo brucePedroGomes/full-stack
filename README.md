@@ -1,7 +1,9 @@
 A task manager for teams. Sign in, then create, edit, assign, and move tasks
 across a board: Planned, To do, In progress, Blocked, and Done.
-You can search and filter tasks by assignee or due date. When a task is
-assigned to someone, they get an email from a background job.
+You can search tasks and filter them by status, assignee, or due date. Each
+board column shows one status. The due date filter shows overdue tasks or
+tasks due in the next 7 days. When a task is assigned to someone, they get an
+email from a background job.
 
 ## Tech stack
 
@@ -13,6 +15,10 @@ assigned to someone, they get an email from a background job.
 | Run | Docker Compose, nginx | [Run it](#run-it) |
 
 ## Run it
+
+You need Docker Engine or Docker Desktop with Docker Compose v2 and `make`.
+The Compose files use `include`, so use [Compose 2.20.3 or newer](https://docs.docker.com/compose/how-tos/multiple-compose-files/include/).
+Run commands from the repository root.
 
 > **`prod-local` is not a production deploy.** It only simulates production on your
 > computer, to test a clean build: the real images, no code mounts, no hot reload,
@@ -48,6 +54,15 @@ console email.
 
 - Grafana user is `admin`. `make urls` shows the password from `backend/.env`.
 - Demo login: `bruce-gomes` / `Tempo-demo-2026!`. Demo data is only created when `DJANGO_DEBUG=true`.
+- Swagger UI: http://localhost:8000/api/docs/. The [API guide](docs/backend/api.md) includes request examples.
+
+## Review and testing
+
+- [Testing](docs/backend/testing.md): commands, coverage, and the real app test.
+- [API documentation choice](docs/backend/drf-spectacular.md): why I use drf-spectacular.
+
+After starting the app, run `make install`, `make test`, and `make check-backend`.
+Backend coverage must stay at or above 80%. The testing guide explains the browser checks.
 
 ## Admin user
 
@@ -64,6 +79,7 @@ It asks for an email and a password. The same command works in both modes.
 
 | File | What it runs |
 |---|---|
+| `docker-compose.yml` | Default entry point for the full dev stack. |
 | `backend/compose.infra.yaml` | Postgres, Redis, and Grafana. The same in both modes. |
 | `backend/compose.yaml` | Infra + backend in dev style. Also works alone, from `backend/`. |
 | `compose.dev.yaml` | `backend/compose.yaml` + the Vite dev server. |
@@ -91,7 +107,11 @@ Stop everything with `make down`. It keeps the database.
 ## Without make
 
 ```sh
-docker compose -f compose.dev.yaml up -d --build --wait    # dev
-docker compose -f compose.prod-local.yaml up -d --build --wait   # prod-local
-docker compose -f compose.dev.yaml exec web python manage.py migrate
+sh scripts/create-local-env.sh
+docker compose up -d --build --wait
+docker compose exec web python manage.py migrate --noinput
+docker compose exec web python manage.py seed_demo
 ```
+
+For prod-local, use `docker compose -f compose.prod-local.yaml` in the three
+Docker commands above. Open http://localhost:8080 instead of port 5173.

@@ -8,3 +8,8 @@
 !.env.example
 __pycache__/
 *.py[cod]
+
+# Test coverage output
+.coverage*
+coverage.xml
+htmlcov/

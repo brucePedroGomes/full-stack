@@ -1,0 +1,4 @@
+# Default entry point for the local development stack.
+# First run: sh scripts/create-local-env.sh
+include:
+  - compose.dev.yaml
