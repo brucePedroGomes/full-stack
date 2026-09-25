@@ -63,6 +63,19 @@ class SettingsTests(SimpleTestCase):
             settings['SIMPLE_JWT']['ACCESS_TOKEN_LIFETIME'], timedelta(minutes=5)
         )
 
+    def test_refresh_tokens_expire_after_one_hour(self):
+        """Refresh tokens cannot be revoked, so a leaked one must stop working soon."""
+        settings = self._load_settings()
+        self.assertEqual(
+            settings['SIMPLE_JWT'].get('REFRESH_TOKEN_LIFETIME'), timedelta(hours=1)
+        )
+
+    def test_database_connections_are_reused_and_checked(self):
+        """Keep each connection for a minute and test it before reuse."""
+        database = self._load_settings()['DATABASES']['default']
+        self.assertEqual(database.get('CONN_MAX_AGE'), 60)
+        self.assertIs(database.get('CONN_HEALTH_CHECKS'), True)
+
     def test_development_uses_local_features(self):
         """Use explicit local HTTP settings, Redis, and console email."""
         self.values.update({

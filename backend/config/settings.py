@@ -82,6 +82,8 @@ DATABASES = {
         'OPTIONS': {
             'sslmode': env.DB_SSLMODE,
         },
+        'CONN_MAX_AGE': 60,
+        'CONN_HEALTH_CHECKS': True,
     }
 }
 
@@ -127,6 +129,7 @@ AUTH_PASSWORD_VALIDATORS = [
 SIMPLE_JWT = {
     'SIGNING_KEY': env.DJANGO_JWT_SIGNING_KEY,
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'REFRESH_TOKEN_LIFETIME': timedelta(hours=1),
 }
 
 REST_FRAMEWORK = {
