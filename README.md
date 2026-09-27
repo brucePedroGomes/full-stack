@@ -10,7 +10,7 @@ email from a background job.
 | Part | Tools | Docs |
 |---|---|---|
 | Frontend | React, TypeScript, Vite, TanStack Query, Tailwind CSS | [Frontend](docs/frontend/frontend.md) |
-| Backend | Django, Django REST framework, JWT, Gunicorn, Celery, PostgreSQL 17, Redis | [Backend](docs/backend/backend.md), [Django](docs/backend/django.md), [Auth](docs/backend/auth.md), [Gunicorn](docs/backend/gunicorn.md), [Workers](docs/backend/workers.md) |
+| Backend | Django, Django REST framework, JWT, Gunicorn, Celery, PostgreSQL 17, Redis | [Backend](docs/backend/backend.md), [Django](docs/backend/django.md), [Auth](docs/backend/auth.md), [Gunicorn](docs/backend/gunicorn.md), [Workers](docs/backend/workers.md), [Rate limits](docs/backend/rate-limits.md) |
 | Monitoring | OpenTelemetry, Grafana (logs, metrics, traces) | [Monitoring](docs/backend/monitoring.md) |
 | Run | Docker Compose, nginx | [Run it](#run-it) |
 
