@@ -70,3 +70,30 @@ class Task(models.Model):
             and self.due_date < timezone.localdate()
             and self.status != self.Status.DONE
         )
+
+
+class OutboxMessage(models.Model):
+    """A Celery job saved in the same transaction as the change that needs it."""
+
+    task_name: models.CharField[str, str] = models.CharField(max_length=200)
+    kwargs: models.JSONField[dict[str, object], dict[str, object]] = models.JSONField()
+    created_at: models.DateTimeField[datetime | None, datetime | None] = (
+        models.DateTimeField(auto_now_add=True)
+    )
+    dispatched_at: models.DateTimeField[datetime | None, datetime | None] = (
+        models.DateTimeField(null=True, blank=True)
+    )
+
+    class Meta:
+        ordering = ['id']
+        indexes = [
+            # The relay only reads messages that have not been sent yet.
+            models.Index(
+                fields=['id'],
+                condition=Q(dispatched_at__isnull=True),
+                name='outbox_pending_idx',
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.task_name} #{self.pk}'

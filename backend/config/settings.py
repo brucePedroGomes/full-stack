@@ -210,6 +210,19 @@ CELERY_TASK_PUBLISH_RETRY_POLICY = {
     'interval_step': 0.2,
     'interval_max': 0.2,
 }
+# Run only one beat process, or the relay starts twice as often.
+CELERY_BEAT_SCHEDULE = {
+    'relay-outbox': {
+        'task': 'tasks.tasks.relay_outbox',
+        'schedule': 5.0,
+        # A late relay is useless: the next one takes the same rows.
+        'options': {'expires': 5.0},
+    },
+    'purge-dispatched-outbox': {
+        'task': 'tasks.tasks.purge_dispatched_outbox',
+        'schedule': 60 * 60 * 24,
+    },
+}
 
 
 # Language and time

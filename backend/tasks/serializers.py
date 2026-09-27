@@ -1,4 +1,3 @@
-from functools import partial
 from typing import Any
 
 from django.db import transaction
@@ -6,7 +5,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 
 from users.serializers import UserSummarySerializer
-from .models import Task
+from .models import OutboxMessage, Task
 from .tasks import send_assignment_email
 
 
@@ -23,8 +22,9 @@ class TaskSerializer(serializers.ModelSerializer[Task]):
         ]
         read_only_fields = ['id', 'status', 'created_by', 'created_at', 'updated_at']
 
+    @transaction.atomic
     def create(self, validated_data: dict[str, Any]) -> Task:
-        """Queue an email once the new task has been committed."""
+        """Save the task and its email job together, or neither."""
         task = super().create(validated_data)
         self._queue_assignment_email(task)
         return task
@@ -44,11 +44,11 @@ class TaskSerializer(serializers.ModelSerializer[Task]):
 
     @staticmethod
     def _queue_assignment_email(task: Task) -> None:
-        """Pass IDs to Redis; the worker loads the saved task."""
+        """Save the job in the outbox; the relay sends it to Redis after commit."""
         if task.assigned_to is not None and task.assigned_to.email:
-            transaction.on_commit(
-                partial(send_assignment_email.delay, task.pk, task.assigned_to.pk),
-                robust=True,
+            OutboxMessage.objects.create(
+                task_name=send_assignment_email.name,
+                kwargs={'task_id': task.pk, 'assignee_id': task.assigned_to.pk},
             )
 
 
