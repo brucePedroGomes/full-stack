@@ -13,8 +13,8 @@ In `DEFAULT_THROTTLE_RATES` in `config/settings.py`. Over a limit, the client ge
 |---|---|
 | Not signed in, per IP | 60 per minute |
 | Signed in, per user | 120 per minute |
-| Login, per IP | 10 per minute |
-| CSRF route, per IP | 60 per minute |
+| Login (JWT, browser, and admin), per IP | 10 per minute |
+| CSRF route and admin login page, per IP | 60 per minute |
 
 Behind proxies, set `DJANGO_NUM_PROXIES` to the number of proxies, so DRF sees the real IP.
 

@@ -1,8 +1,9 @@
-"""Browser session endpoints for the React app."""
+"""Browser session endpoints for the React app and the admin login."""
 
 from math import ceil
 from typing import cast
 
+from django.contrib import admin
 from django.contrib.auth import login, logout
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.forms import AuthenticationForm
@@ -87,3 +88,19 @@ class BrowserLogoutView(View):
     def post(self, request: HttpRequest) -> HttpResponse:
         logout(request)
         return HttpResponse(status=204)
+
+
+class AdminLoginView(View):
+    http_method_names = ['get', 'post']
+
+    @property
+    def throttle_scope(self) -> str:
+        return 'auth' if self.request.method == 'POST' else 'auth_csr'
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        response = auth_throttle_response(request, self)
+        if response is not None:
+            return response
+        return admin.site.login(request)
+
+    post = get

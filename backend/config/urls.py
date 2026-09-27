@@ -21,6 +21,7 @@ urlpatterns = [
     path('api/users/', include('users.urls')),
     path('health/live/', HealthView.as_view(), name='health-live'),
     path('health/ready/', ReadyView.as_view(), name='health-ready'),
+    path('admin/login/', browser_auth.AdminLoginView.as_view()),
     path('admin/', admin.site.urls),
 ]
 
