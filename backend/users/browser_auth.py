@@ -90,9 +90,10 @@ class BrowserLogoutView(View):
         return HttpResponse(status=204)
 
 
+@method_decorator(
+    [sensitive_post_parameters(), csrf_protect, never_cache], name='dispatch'
+)
 class AdminLoginView(View):
-    http_method_names = ['get', 'post']
-
     @property
     def throttle_scope(self) -> str:
         return 'auth' if self.request.method == 'POST' else 'auth_csr'

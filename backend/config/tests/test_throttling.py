@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.test import Client, override_settings
 from django.urls import reverse
+from django.views.debug import SafeExceptionReporterFilter
 from rest_framework.test import APITestCase
 from rest_framework.throttling import SimpleRateThrottle
 
@@ -153,3 +154,31 @@ class RateLimitTests(APITestCase):
         response = self.client.post(reverse('admin:login'), admin_form)
 
         self.assertRedirects(response, reverse('admin:index'), fetch_redirect_response=False)
+
+    @override_settings(STORAGES=STORAGES_WITHOUT_COLLECTSTATIC)
+    def test_admin_login_answers_head(self) -> None:
+        """Keep HEAD working for uptime monitors, like Django's own login."""
+        self.assertEqual(self.client.head(reverse('admin:login')).status_code, 200)
+
+    def test_blocked_admin_login_hides_password_from_error_reports(self) -> None:
+        """Remove the submitted password from error reports, even when blocked."""
+        blocked = self.block_admin_login()
+
+        parameters = SafeExceptionReporterFilter().get_post_parameters(blocked.wsgi_request)
+
+        self.assertNotEqual(parameters['password'], 'wrong')
+
+    def test_blocked_admin_login_prevents_caching(self) -> None:
+        """Prevent browsers and proxies from storing the blocked login answer."""
+        blocked = self.block_admin_login()
+
+        self.assertIn('no-store', blocked.headers.get('Cache-Control', ''))
+
+    @override_settings(STORAGES=STORAGES_WITHOUT_COLLECTSTATIC)
+    def block_admin_login(self):
+        credentials = {'username': 'missing', 'password': 'wrong'}
+        for _ in range(2):
+            self.client.post(reverse('admin:login'), credentials)
+        blocked = self.client.post(reverse('admin:login'), credentials)
+        self.assertEqual(blocked.status_code, 429)
+        return blocked
