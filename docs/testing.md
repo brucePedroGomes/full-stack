@@ -7,3 +7,7 @@ Setup: run `make dev` and `make install` from the repository root.
 - Backend report: open `backend/htmlcov/index.html` in your browser.
 - Frontend report: open `frontend/coverage/index.html` in your browser.
 - Coverage also appears in the terminal. Backend requires 80%.
+
+
+
+SLOWMO=500 npm run test:e2e -- --headed --workers=1
