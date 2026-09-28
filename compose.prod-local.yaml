@@ -33,6 +33,7 @@ services:
     environment:
       <<: *telemetry
       OTEL_SERVICE_NAME: challenge-web
+      DJANGO_NUM_PROXIES: "1"
     ports:
       - "127.0.0.1:8000:8000"
     healthcheck:

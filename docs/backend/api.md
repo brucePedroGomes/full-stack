@@ -65,4 +65,4 @@ Updates load and lock the current task before saving. This keeps changes to othe
 
 Filters can be combined. Dates use the team's `America/Sao_Paulo` timezone. Past due dates are allowed so overdue work can be tracked. Tasks have 20 items per page by default; users have 10. Lists return `count`, `next`, `previous`, and `results`.
 
-Invalid fields return 400, missing or invalid authentication returns 401, and missing records return 404. Successful deletion returns 204. Rate limits return 429 with `Retry-After`. The normal limits are 120 requests per minute per signed-in user, 60 per minute for anonymous requests, and 10 per minute for the shared login/token scope. Browser CSRF setup has its own limit of 60 per minute.
+Invalid fields return 400, missing or invalid authentication returns 401, and missing records return 404. Successful deletion returns 204. Rate limits return 429 with `Retry-After`. See [Rate limits](rate-limits.md).

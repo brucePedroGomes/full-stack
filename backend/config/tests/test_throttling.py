@@ -4,8 +4,14 @@ from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.test import Client, override_settings
 from django.urls import reverse
+from django.views.debug import SafeExceptionReporterFilter
 from rest_framework.test import APITestCase
 from rest_framework.throttling import SimpleRateThrottle
+
+STORAGES_WITHOUT_COLLECTSTATIC = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+}
 
 
 @override_settings(
@@ -105,3 +111,74 @@ class RateLimitTests(APITestCase):
         self.assertEqual(self.client.get(url).status_code, 200)
         self.assertEqual(self.client.get(url).status_code, 200)
         self.assertEqual(self.client.get(url).status_code, 429)
+
+    @override_settings(STORAGES=STORAGES_WITHOUT_COLLECTSTATIC)
+    def test_admin_login_shares_the_login_limit(self) -> None:
+        """Count admin password tries together with the API logins."""
+        credentials = {'username': 'missing', 'password': 'wrong'}
+        self.client.post(reverse('token-obtain'), credentials, format='json')
+        self.assertEqual(self.client.post(reverse('admin:login'), credentials).status_code, 200)
+
+        blocked = self.client.post(reverse('admin:login'), credentials)
+
+        self.assertEqual(blocked.status_code, 429)
+        self.assertIn('Retry-After', blocked)
+
+    @override_settings(STORAGES=STORAGES_WITHOUT_COLLECTSTATIC)
+    def test_admin_login_page_shares_the_public_page_limit(self) -> None:
+        """Limit admin login page views together with the CSRF route."""
+        self.client.get(reverse('browser-csrf'))
+        self.assertEqual(self.client.get(reverse('admin:login')).status_code, 200)
+
+        blocked = self.client.get(reverse('admin:login'))
+
+        self.assertEqual(blocked.status_code, 429)
+        self.assertIn('Retry-After', blocked)
+
+    @override_settings(STORAGES=STORAGES_WITHOUT_COLLECTSTATIC)
+    def test_admin_login_page_views_do_not_use_login_tries(self) -> None:
+        """Keep password tries for real logins."""
+        for _ in range(2):
+            self.client.get(reverse('admin:login'))
+
+        response = self.client.post(reverse('admin:login'), {'username': 'missing', 'password': 'wrong'})
+
+        self.assertEqual(response.status_code, 200)
+
+    @override_settings(STORAGES=STORAGES_WITHOUT_COLLECTSTATIC)
+    def test_staff_can_still_sign_in_to_the_admin(self) -> None:
+        """Keep the normal admin login working behind the limit."""
+        User.objects.create_user('staff', password='right-password', is_staff=True)
+
+        admin_form = {'username': 'staff', 'password': 'right-password', 'next': reverse('admin:index')}
+        response = self.client.post(reverse('admin:login'), admin_form)
+
+        self.assertRedirects(response, reverse('admin:index'), fetch_redirect_response=False)
+
+    @override_settings(STORAGES=STORAGES_WITHOUT_COLLECTSTATIC)
+    def test_admin_login_answers_head(self) -> None:
+        """Keep HEAD working for uptime monitors, like Django's own login."""
+        self.assertEqual(self.client.head(reverse('admin:login')).status_code, 200)
+
+    def test_blocked_admin_login_hides_password_from_error_reports(self) -> None:
+        """Remove the submitted password from error reports, even when blocked."""
+        blocked = self.block_admin_login()
+
+        parameters = SafeExceptionReporterFilter().get_post_parameters(blocked.wsgi_request)
+
+        self.assertNotEqual(parameters['password'], 'wrong')
+
+    def test_blocked_admin_login_prevents_caching(self) -> None:
+        """Prevent browsers and proxies from storing the blocked login answer."""
+        blocked = self.block_admin_login()
+
+        self.assertIn('no-store', blocked.headers.get('Cache-Control', ''))
+
+    @override_settings(STORAGES=STORAGES_WITHOUT_COLLECTSTATIC)
+    def block_admin_login(self):
+        credentials = {'username': 'missing', 'password': 'wrong'}
+        for _ in range(2):
+            self.client.post(reverse('admin:login'), credentials)
+        blocked = self.client.post(reverse('admin:login'), credentials)
+        self.assertEqual(blocked.status_code, 429)
+        return blocked
