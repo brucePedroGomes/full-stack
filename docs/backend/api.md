@@ -59,7 +59,7 @@ Updates load and lock the current task before saving. This keeps changes to othe
 | `due=next7` | Due today or in the following six days. |
 | `assigned_to=3` | Assigned to this user. |
 | `unassigned=true` | No assignee. |
-| `search=demo` | Search title and description. |
+| `search=demo` | Full text search in title and description. Matches whole words and their English forms. |
 | `page=2&page_size=20` | Select a page and its size, capped at 100. |
 | `ordering=-updated_at,-id` | Most recently changed first; this is the default. |
 

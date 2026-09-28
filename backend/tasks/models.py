@@ -2,9 +2,14 @@ from datetime import date, datetime
 
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.contrib.postgres.indexes import GinIndex
+from django.contrib.postgres.search import SearchVector
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
+
+# The search filter must use this same vector, or PostgreSQL skips the index.
+TASK_SEARCH_VECTOR = SearchVector('title', 'description', config='english')
 
 
 class Task(models.Model):
@@ -50,6 +55,7 @@ class Task(models.Model):
                 fields=['status', '-updated_at', '-id'],
                 name='task_status_updated_id_idx',
             ),
+            GinIndex(TASK_SEARCH_VECTOR, name='task_search_idx'),
         ]
         constraints = [
             models.CheckConstraint(

@@ -1,11 +1,12 @@
 from datetime import date, timedelta
 
 from django import forms
+from django.contrib.postgres.search import SearchQuery
 from django.db.models import QuerySet
 from django.utils import timezone
 from django_filters import rest_framework as filters
 
-from .models import Task
+from .models import TASK_SEARCH_VECTOR, Task
 
 
 class TaskFilterForm(forms.Form):
@@ -28,6 +29,7 @@ class TaskFilterForm(forms.Form):
 
 
 class TaskFilter(filters.FilterSet):
+    search = filters.CharFilter(method='filter_search')
     unassigned = filters.BooleanFilter(field_name='assigned_to', lookup_expr='isnull')
     due_after = filters.DateFilter(field_name='due_date', lookup_expr='gte')
     due_before = filters.DateFilter(field_name='due_date', lookup_expr='lte')
@@ -40,6 +42,13 @@ class TaskFilter(filters.FilterSet):
         model = Task
         fields = ['status', 'due_date', 'assigned_to']
         form = TaskFilterForm
+
+    def filter_search(
+        self, queryset: QuerySet[Task], name: str, value: str
+    ) -> QuerySet[Task]:
+        """Match whole words in the title or description, using the search index."""
+        query = SearchQuery(value, config='english', search_type='websearch')
+        return queryset.alias(search_vector=TASK_SEARCH_VECTOR).filter(search_vector=query)
 
     def filter_due(self, queryset: QuerySet[Task], name: str, value: str) -> QuerySet[Task]:
         today = timezone.localdate()

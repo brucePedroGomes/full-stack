@@ -1,7 +1,7 @@
 from django.db.models import Model
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics
-from rest_framework.filters import OrderingFilter, SearchFilter
+from rest_framework.filters import OrderingFilter
 from rest_framework.serializers import BaseSerializer
 
 from .filters import TaskFilter
@@ -14,9 +14,8 @@ class TaskListCreateView(generics.ListCreateAPIView[Task]):
     queryset = Task.objects.select_related('assigned_to')
     serializer_class = TaskCreateSerializer
     pagination_class = TaskPagination
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_class = TaskFilter
-    search_fields = ['title', 'description']
     ordering_fields = ['id', 'updated_at']
     ordering = ['-updated_at', '-id']
 
