@@ -1,11 +1,13 @@
 from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
+from django.db import connection
 from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
+from tasks.filters import TaskFilter
 from tasks.models import Task
 
 
@@ -198,3 +200,22 @@ class TaskFilterTests(APITestCase):
         self.assertEqual(first.data['results'][0]['id'], description_match.pk)
         self.assertEqual(second.data['results'][0]['id'], title_match.pk)
         self.assertIsNone(second.data['next'])
+
+    def test_search_matches_other_word_forms(self) -> None:
+        """Find 'Review release notes' when the user types 'released note'."""
+        match = Task.objects.create(title='Review release notes', created_by=self.user)
+        Task.objects.create(title='Fix login', created_by=self.user)
+
+        response = self.client.get(reverse('tasks:list'), {'search': 'released note'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([task['id'] for task in response.data['results']], [match.pk])
+
+    def test_search_uses_the_full_text_index(self) -> None:
+        """Let PostgreSQL use task_search_idx for the search filter."""
+        with connection.cursor() as cursor:
+            # The test table is tiny, so turn off the full table scan.
+            cursor.execute('SET LOCAL enable_seqscan = off')
+        tasks = TaskFilter({'search': 'release'}, queryset=Task.objects.all()).qs
+
+        self.assertIn('task_search_idx', tasks.explain())

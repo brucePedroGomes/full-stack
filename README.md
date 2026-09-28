@@ -10,7 +10,7 @@ email from a background job.
 | Part | Tools | Docs |
 |---|---|---|
 | Frontend | React, TypeScript, Vite, TanStack Query, Tailwind CSS | [Frontend](docs/frontend/frontend.md) |
-| Backend | Django, Django REST framework, JWT, Gunicorn, Celery, PostgreSQL 17, Redis | [Backend](docs/backend/backend.md), [Django](docs/backend/django.md), [Auth](docs/backend/auth.md), [Gunicorn](docs/backend/gunicorn.md), [Workers](docs/backend/workers.md) |
+| Backend | Django, Django REST framework, JWT, Gunicorn, Celery, PostgreSQL 17, Redis | [Backend](docs/backend/backend.md), [Django](docs/backend/django.md), [Auth](docs/backend/auth.md), [Gunicorn](docs/backend/gunicorn.md), [Workers](docs/backend/workers.md), [Search](docs/backend/search.md), [Rate limits](docs/backend/rate-limits.md) |
 | Monitoring | OpenTelemetry, Grafana (logs, metrics, traces) | [Monitoring](docs/backend/monitoring.md) |
 | Run | Docker Compose, nginx | [Run it](#run-it) |
 
@@ -49,7 +49,7 @@ console email.
 | | Dev | Prod-local |
 |---|---|---|
 | App | http://localhost:5173 | http://localhost:8080 |
-| API | http://localhost:8000/api/ | http://localhost:8000/api/ |
+| API | http://localhost:8000/api/docs/ | http://localhost:8000/api/docs/ |
 | Grafana | http://localhost:3000/d/challenge-overview | same |
 
 - Grafana user is `admin`. `make urls` shows the password from `backend/.env`.
@@ -58,7 +58,7 @@ console email.
 
 ## Review and testing
 
-- [Testing](docs/backend/testing.md): two commands and coverage.
+- [Testing](docs/testing.md): two commands and coverage.
 - [How I use AI](docs/ai.md): research, review, and a small example.
 - [API documentation choice](docs/backend/drf-spectacular.md): why I use drf-spectacular.
 

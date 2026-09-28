@@ -5,7 +5,7 @@ from django.test import override_settings
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
-from tasks.models import Task
+from tasks.models import OutboxMessage, Task
 from tasks.views import TaskDetailView, TaskStatusView
 
 
@@ -51,15 +51,13 @@ class TaskConcurrentUpdateTests(APITestCase):
         """Compare the assignment with the saved row, not an earlier copy."""
         stale = Task.objects.get(pk=self.task.pk)
         Task.objects.filter(pk=self.task.pk).update(assigned_to=self.assignee)
-        with patch('tasks.serializers.send_assignment_email.delay') as enqueue:
-            with self.captureOnCommitCallbacks(execute=True):
-                with patch.object(TaskDetailView, 'get_object', return_value=stale):
-                    response = self.client.patch(
-                        reverse('tasks:detail', args=[self.task.pk]),
-                        {'assigned_to': self.assignee.pk}, format='json',
-                    )
-            self.assertEqual(response.status_code, 200)
-            enqueue.assert_not_called()
+        with patch.object(TaskDetailView, 'get_object', return_value=stale):
+            response = self.client.patch(
+                reverse('tasks:detail', args=[self.task.pk]),
+                {'assigned_to': self.assignee.pk}, format='json',
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(OutboxMessage.objects.exists())
 
     def test_edit_does_not_recreate_a_deleted_task(self) -> None:
         """Return 404 when deletion wins the race with either update route."""

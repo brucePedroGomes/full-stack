@@ -12,6 +12,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     launchOptions: {
       executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+      slowMo: Number(process.env.SLOWMO ?? 0),
     },
   },
   projects: [

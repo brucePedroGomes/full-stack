@@ -56,3 +56,12 @@ services:
       OTEL_SERVICE_NAME: challenge-worker
     command: celery -A config worker --loglevel=INFO --concurrency=2
     restart: unless-stopped
+
+  beat:
+    <<: *app
+    environment:
+      <<: *telemetry
+      OTEL_SERVICE_NAME: challenge-beat
+    # Only one beat. /tmp keeps its schedule file out of the mounted code.
+    command: celery -A config beat --loglevel=INFO --schedule /tmp/celerybeat-schedule
+    restart: unless-stopped
